@@ -244,7 +244,7 @@
                                 }
                             } else {
                                 const errorMessages = {
-                                    419: "Sesi anda telah habis, Silahkan Login Kembali",
+                                    419: '',
                                     500: "Tidak dapat terhubung ke server, Silahkan periksa koneksi internet anda",
                                     403: "Anda tidak memiliki izin untuk mengakses halaman ini",
                                     404: "Halaman tidak ditemukan"

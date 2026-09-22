@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\PersistentLogin;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -17,7 +18,15 @@ class CheckUserPermissions
     public function handle(Request $request, Closure $next, ...$params)
     {
         if (!Auth::check()) {
-            return redirect('login');
+            $user = PersistentLogin::userFromRequest($request);
+            if ($user) {
+                PersistentLogin::bind($user);
+                PersistentLogin::queue($user);
+            }
+        }
+
+        if (!Auth::check()) {
+            return redirect()->route('login');
         }
         $user = Auth::user();
 

@@ -740,11 +740,11 @@
                 }
 
                 const errorMessages = {
-                    401: 'Sesi anda sudah habis 🙏 <br>Silahkan muat ulang halaman atau login kembali!',
+                    401: '',
                     403: 'Anda tidak memiliki izin untuk mengakses 😖',
                     404: 'Halaman tidak ditemukan 🧐',
                     405: 'Metode tidak valid 🧐 <br>Silakan coba lagi!',
-                    419: 'Sesi anda sudah habis 🙏 <br>Silahkan login kembali!',
+                    419: '',
                     429: 'Terlalu banyak permintaan 🙏 <br>Tunggu beberapa saat!',
                 };
 

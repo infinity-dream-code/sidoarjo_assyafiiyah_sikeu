@@ -461,7 +461,7 @@
                         processErros(errors);
                     }
                 } else if (xhr.status === 419) {
-                    errorAlert('Sesi anda telah habis, Silahkan Login Kembali')
+                    typeof window.pingKeepAlive === 'function' && window.pingKeepAlive()
                 } else if (xhr.status === 500) {
                     errorAlert('Tidak dapat terhubung ke server, Silahkan periksa koneksi internet anda')
                 } else if (xhr.status === 403) {

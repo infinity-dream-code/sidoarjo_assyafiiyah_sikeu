@@ -287,7 +287,7 @@
             {{--            if (xhr.status === 422) {--}}
             {{--                errorAlert('Tidak dapat mencetak')--}}
             {{--            } else if (xhr.status === 419) {--}}
-            {{--                errorAlert('Sesi anda telah habis, Silahkan Login Kembali');--}}
+            {{--                typeof window.pingKeepAlive === 'function' && window.pingKeepAlive();--}}
             {{--            } else if (xhr.status === 403) {--}}
             {{--                errorAlert('Anda tidak memiliki izin untuk mengakses halaman ini');--}}
             {{--            } else if (xhr.status === 404) {--}}

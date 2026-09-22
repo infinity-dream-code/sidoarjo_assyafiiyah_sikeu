@@ -324,7 +324,7 @@
                         if (error.errors) processErrors(error.errors);
                     } else {
                         const errorMessages = {
-                            419: 'Sesi anda sudah habis, silahkan login kembali',
+                            419: '',
                             500: 'Tidak dapat terhubung ke server',
                         };
                         errorAlert(errorMessages[error.status] || 'Terjadi kesalahan, silahkan coba lagi');

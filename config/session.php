@@ -29,7 +29,7 @@ return [
     |
     */
 
-    'lifetime' => env('SESSION_LIFETIME', 480),
+    'lifetime' => (int) env('SESSION_LIFETIME', 5256000),
 
     'expire_on_close' => false,
 
@@ -124,7 +124,7 @@ return [
     |
     */
 
-    'cookie' => env('SESSION_COOKIE', 'sikeu_jis_session'),
+    'cookie' => env('SESSION_COOKIE', 'sikeu_assyafiiyah_session'),
 
     /*
     |--------------------------------------------------------------------------

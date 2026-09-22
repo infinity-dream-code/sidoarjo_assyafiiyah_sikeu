@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\PersistentLogin;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
@@ -10,6 +11,14 @@ class AuthController extends Controller
 {
     public function index()
     {
+        if (!Auth::check()) {
+            $user = PersistentLogin::userFromRequest(request());
+            if ($user) {
+                PersistentLogin::bind($user);
+                PersistentLogin::queue($user);
+            }
+        }
+
         if (Auth::check()) {
             return redirect()->route("admin.index");
         }
@@ -49,6 +58,7 @@ class AuthController extends Controller
     // Handle logout logic
     public function logout()
     {
+        PersistentLogin::forget();
         Session::forget('user');
         return redirect()->route('login');
     }

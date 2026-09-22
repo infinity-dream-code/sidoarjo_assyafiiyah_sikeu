@@ -1063,8 +1063,13 @@ async function dataTableCreate(options) {
                     return $.extend({}, d, transformedData);
                 }
             }, error: function (xhr, error, code) {
+                if (xhr && (xhr.status === 401 || xhr.status === 419)) {
+                    if (typeof window.pingKeepAlive === 'function') {
+                        window.pingKeepAlive();
+                    }
+                    return;
+                }
                 const descriptions = {
-                    '401': 'Sesi anda telah habis, silahkan login kembali!',
                     '404': 'Data tidak ditemukan!',
                     '500': 'Internal Server Error',
                 };
@@ -1683,8 +1688,13 @@ async function getDT(options) {
         url: options.columnUrl,
         success: finishColumns,
             error: function (xhr) {
+                if (xhr && (xhr.status === 401 || xhr.status === 419)) {
+                    if (typeof window.pingKeepAlive === 'function') {
+                        window.pingKeepAlive();
+                    }
+                    return;
+                }
                 const descriptions = {
-                    401: 'Sesi anda telah habis, silahkan login kembali!',
                     403: 'Anda tidak memiliki izin untuk mengakses kolom data.',
                     404: 'Endpoint kolom data tidak ditemukan.',
                     500: 'Gagal memuat definisi kolom tabel.',

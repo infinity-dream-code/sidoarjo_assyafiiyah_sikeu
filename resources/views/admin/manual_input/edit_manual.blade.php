@@ -181,7 +181,7 @@
                 if (xhr.status === 422) {
                     errorAlert('Gagal mendapat data siswa');
                 } else if (xhr.status === 419) {
-                    errorAlert('Sesi anda telah habis, Silahkan Login Kembali');
+                    typeof window.pingKeepAlive === 'function' && window.pingKeepAlive();
                 } else if (xhr.status === 500) {
                     errorAlert('Tidak dapat terhubung ke server, Silahkan periksa koneksi internet anda');
                 } else if (xhr.status === 403) {
@@ -345,11 +345,11 @@
                         }
                     } else {
                         const errorMessages = {
-                            401: 'Sesi anda sudah habis 🙏 <br>Silahkan muat ulang halaman untuk melanjutkan! <br> jika masalah masih terjadi silahkan login kembali!',
+                            401: '',
                             403: 'Anda tidak memiliki izin untuk mengakses halaman ini 😖',
                             404: 'Halaman yang dituju tidak ditemukan 🧐',
                             405: 'Metode tidak valid 🧐 <br>silahkan muat ulang halaman dan coba lagi!',
-                            419: 'Sesi anda sudah habis 🙏 <br>Silahkan muat ulang halaman untuk melanjutkan! <br> jika masalah masih terjadi silahkan login kembali!',
+                            419: '',
                             429: 'Terlalu banyak permintaan akses <br>silahkan tunggu beberapa saat 🙏',
                         };
                         errorAlert(errorMessages[error.status] || "Terjadi kesalahan, silahkan coba memuat ulang halaman");
@@ -441,11 +441,11 @@
                 }
 
                 const errorMessages = {
-                    401: 'Sesi anda sudah habis 🙏 <br>Silahkan muat ulang halaman atau login kembali!',
+                    401: '',
                     403: 'Anda tidak memiliki izin untuk mengakses 😖',
                     404: 'Halaman tidak ditemukan 🧐',
                     405: 'Metode tidak valid 🧐 <br>Silakan coba lagi!',
-                    419: 'Sesi anda sudah habis 🙏 <br>Silahkan login kembali!',
+                    419: '',
                     429: 'Terlalu banyak permintaan 🙏 <br>Tunggu beberapa saat!',
                 };
 

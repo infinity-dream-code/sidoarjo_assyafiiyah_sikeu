@@ -16,13 +16,13 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'Jakarta Islamic School'),
-    'nama_instansi' => env('APP_NAMA_INSTANSI', 'Jakarta Islamic School'),
-    'alamat' => env('APP_ALAMAT', 'Kota Jakarta Timur, Prov. DKI Jakarta'),
-    'logo' => env('APP_LOGO', 'jis.jpeg'),
+    'name' => env('APP_NAME', 'Ponpes Asy-Syafi\'iyah'),
+    'nama_instansi' => env('APP_NAMA_INSTANSI', 'Ponpes Asy-Syafi\'iyah'),
+    'alamat' => env('APP_ALAMAT', 'Kab. Sidoarjo, Prov. Jawa Timur'),
+    'logo' => env('APP_LOGO', 'iconme.jpg'),
     'email' => env('APP_EMAIL', 'ypisabkho@gmail.com'),
     'telepon' => env('APP_TELEPON', 'SIKEU'),
-    'domisili' => env('APP_DOMISILI', 'Jakarta Timur'),
+    'domisili' => env('APP_DOMISILI', 'Kab. Sidoarjo'),
     'nova' => env('APP_NOVA') ?: '797783',
     'biaya_admin' => env('BIAYA_ADMIN', 0),
     'dummy_seeder' => env('DUMMY_SEEDER',false),

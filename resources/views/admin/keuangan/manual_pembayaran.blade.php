@@ -378,7 +378,7 @@
                             const errors = JSON.parse(xhr.responseText).error;
                             if (errors) processErros(errors);
                         } else if (xhr.status === 419) {
-                            errorAlert('Sesi anda telah habis, Silahkan Login Kembali');
+                            typeof window.pingKeepAlive === 'function' && window.pingKeepAlive();
                         } else if (xhr.status === 500) {
                             errorAlert('Tidak dapat terhubung ke server, Silahkan periksa koneksi internet anda');
                         } else if (xhr.status === 403) {
@@ -592,11 +592,11 @@
                         if (error.error || error.errors) processErros(error.error || error.errors);
                     } else {
                         const errorMessages = {
-                            401: 'Sesi anda sudah habis 🙏 <br>Silahkan muat ulang halaman untuk melanjutkan!',
+                            401: '',
                             403: 'Anda tidak memiliki izin untuk mengakses halaman ini 😖',
                             404: 'Halaman yang dituju tidak ditemukan 🧐',
                             405: 'Metode tidak valid 🧐 <br>silahkan muat ulang halaman dan coba lagi!',
-                            419: 'Sesi anda sudah habis 🙏 <br>Silahkan muat ulang halaman untuk melanjutkan!',
+                            419: '',
                             429: 'Terlalu banyak permintaan akses <br>silahkan tunggu beberapa saat 🙏',
                         };
                         errorAlert(errorMessages[error.status] || 'Terjadi kesalahan, silahkan coba memuat ulang halaman');
@@ -643,7 +643,7 @@
                     if (xhr.status === 422) {
                         errorAlert('Data tidak ditemukan');
                     } else if (xhr.status === 419) {
-                        errorAlert('Sesi anda telah habis, Silahkan Login Kembali');
+                        typeof window.pingKeepAlive === 'function' && window.pingKeepAlive();
                     } else if (xhr.status === 500) {
                         errorAlert('Tidak dapat terhubung ke server, Silahkan periksa koneksi internet anda');
                     } else if (xhr.status === 403) {
