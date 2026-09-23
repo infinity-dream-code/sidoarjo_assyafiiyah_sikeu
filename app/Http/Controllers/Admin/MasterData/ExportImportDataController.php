@@ -153,26 +153,28 @@ class ExportImportDataController extends Controller
                 'nama', 'unit', 'kelas', 'kelompok', 'angkatan',
             ];
 
-            $conditionalColumns = ['nis', 'nodaftar'];
+            $conditionalColumns = ['nik', 'nodaftar'];
             if (empty($headingsData) || !isset($headingsData[0][0])) throw new \Exception ('Tidak dapat membaca judul kolom dari file. Pastikan file memiliki header yang sesuai.');
             $headings = $headingsData[0][0];
-            $headings = array_map('strtolower', $headings);
+            $headings = array_map(static function ($heading) {
+                return strtolower(preg_replace('/[^a-z0-9]+/i', '', (string) $heading) ?? (string) $heading);
+            }, $headings);
             $missingColumns = [];
-            $hasNis = in_array('nis', $headings);
-            $hasNodaftar = in_array('nodaftar', $headings);
+            $hasNik = in_array('nik', $headings, true) || in_array('nis', $headings, true);
+            $hasNodaftar = in_array('nodaftar', $headings, true);
 
-            if (!$hasNis && !$hasNodaftar) {
-                $missingColumns[] = 'NIS / NODAFTAR';
+            if (!$hasNik && !$hasNodaftar) {
+                $missingColumns[] = 'NIK / NODAFTAR';
             }
-            foreach ($requiredColumns as $column) if (!in_array($column, $headings)) $missingColumns[] = $column;
+            foreach ($requiredColumns as $column) if (!in_array($column, $headings, true)) $missingColumns[] = $column;
 
             if (!empty($missingColumns)) {
                 $formattedMissingColumns = strtoupper(str_replace('_', ' ', implode(', ', $missingColumns)));
-                $formattedRequiredColumns = strtoupper(str_replace('_', ' ', implode(', ', array_merge($requiredColumns, $conditionalColumns))));
+                $formattedRequiredColumns = 'NIS, NAMA, UNIT, KELAS, KELOMPOK, ANGKATAN';
                 throw new Exception (
                     "Kolom $formattedMissingColumns tidak ditemukan.<br><hr>
                                pastikan kolom berikut ada dan terisi pada file import yang akan diproses: $formattedRequiredColumns. <br>
-                               Catatan: NIS atau NODAFTAR wajib salah satu terisi."
+                               Catatan: NIS atau NODAFTAR wajib salah satu terisi. Format sama dengan Buat Tagihan Excel; bedanya tagihan ada tambahan NOMINAL."
                 );
             }
 
@@ -229,23 +231,35 @@ class ExportImportDataController extends Controller
                     ], 422);
                 }
 
-                $rows = array_filter($data, fn ($item) => !empty($item['nis'] ?? null));
+                $missingKelas = collect($data)->filter(function ($item) {
+                    return $this->isBlankKelas($item['kelas'] ?? null);
+                })->count();
+                if ($missingKelas > 0) {
+                    return response()->json([
+                        'message' => "Ada {$missingKelas} baris tanpa KELAS. Siswa tanpa kelas tidak dapat disimpan.",
+                    ], 422);
+                }
+
+                $rows = array_filter($data, function ($item) {
+                    return !empty($item['nis'] ?? null) && !$this->isBlankKelas($item['kelas'] ?? null);
+                });
                 if (empty($rows)) {
-                    return response()->json(['message' => 'Tidak ada baris dengan NIS yang dapat disimpan'], 422);
+                    return response()->json(['message' => 'Tidak ada baris dengan NIK dan KELAS yang dapat disimpan'], 422);
                 }
 
                 $saved = 0;
                 foreach ($rows as $item) {
                     $item = $this->normalizeImportItem($item);
                     $nis = (string) ($item['nis'] ?? '');
-                    if ($nis === '') {
+                    $kelas = trim((string) ($item['kelas'] ?? ''));
+                    if ($nis === '' || $this->isBlankKelas($kelas)) {
                         continue;
                     }
 
                     InputSiswaProcedure::call(
                         $nis,
                         (string) ($item['nama'] ?? ''),
-                        (string) ($item['kelas'] ?? ''),
+                        $kelas,
                         (string) ($item['unit'] ?? ''),
                         (string) ($item['unit'] ?? ''),
                         (string) ($item['kelompok'] ?? ''),
@@ -268,6 +282,9 @@ class ExportImportDataController extends Controller
                     if ((int) ($item['status'] ?? 1) === 0) {
                         continue;
                     }
+                    if ($this->isBlankKelas($item['kelas'] ?? null)) {
+                        continue;
+                    }
                     $item = $this->normalizeImportItem($item);
                     $lookupKey = $item['nodaftar'] ?? '';
 
@@ -283,7 +300,7 @@ class ExportImportDataController extends Controller
                             if ($existingNis) {
                                 $connection->rollBack();
 
-                                return response()->json(['message' => 'Gagal, siswa dengan NIS :' . $item['nis'] . ' sudah ada!'], 422);
+                                return response()->json(['message' => 'Gagal, siswa dengan NIK :' . $item['nis'] . ' sudah ada!'], 422);
                             }
                         }
 
@@ -301,6 +318,9 @@ class ExportImportDataController extends Controller
 
                 foreach ($rows as $item) {
                     if ((int) ($item['status'] ?? 1) === 0) {
+                        continue;
+                    }
+                    if ($this->isBlankKelas($item['kelas'] ?? null)) {
                         continue;
                     }
                     $item = $this->normalizeImportItem($item);
@@ -322,6 +342,9 @@ class ExportImportDataController extends Controller
                 $rows = array_filter($data, fn ($item) => !empty($item['nodaftar'] ?? null) && !empty($item['nis'] ?? null));
 
                 foreach ($rows as $item) {
+                    if ((int) ($item['status'] ?? 1) === 0) {
+                        continue;
+                    }
                     $item = $this->normalizeImportItem($item);
                     if (strlen((string) ($item['nodaftar'] ?? '')) > 10) {
                         continue;
@@ -334,7 +357,7 @@ class ExportImportDataController extends Controller
                     if ($existingNis) {
                         $connection->rollBack();
 
-                        return response()->json(['message' => 'Gagal, NIS :' . $item['nis'] . ' sudah ada!'], 422);
+                        return response()->json(['message' => 'Gagal, NIK :' . $item['nis'] . ' sudah ada!'], 422);
                     }
 
                     $existingCust = scctcust::where('NUM2ND', $item['nodaftar'])->first();
@@ -388,8 +411,33 @@ class ExportImportDataController extends Controller
         $item['nodaftar'] = isset($item['nodaftar']) && $item['nodaftar'] !== '' && $item['nodaftar'] !== null
             ? (string) $item['nodaftar']
             : null;
+        $item['kelas'] = $this->isBlankKelas($item['kelas'] ?? null)
+            ? ''
+            : trim((string) $item['kelas']);
 
         return $item;
+    }
+
+    private function isBlankKelas(mixed $value): bool
+    {
+        if ($value === null || $value === false) {
+            return true;
+        }
+
+        if (is_int($value) || is_float($value)) {
+            return (float) $value == 0.0;
+        }
+
+        $text = strtolower(trim((string) $value));
+
+        return $text === ''
+            || $text === '-'
+            || $text === 'null'
+            || $text === 'n/a'
+            || $text === 'na'
+            || $text === 'none'
+            || $text === '0'
+            || $text === '0.0';
     }
 
     /** Nama ortu/wali utama (kolom ortu / genus / ayah di Excel). */
@@ -428,7 +476,7 @@ class ExportImportDataController extends Controller
             'CODE01' => $code01,
             'DESC01' => $code01,
             'CODE02' => $item['unit'] ?? null,
-            'DESC02' => $item['kelas'] ?? null,
+            'DESC02' => $this->isBlankKelas($item['kelas'] ?? null) ? null : trim((string) $item['kelas']),
             'DESC03' => $item['kelompok'] ?? null,
             'CODE04' => $item['gender'] ?? null,
             'DESC04' => $item['angkatan'] ?? null,
@@ -436,6 +484,10 @@ class ExportImportDataController extends Controller
             'GENUS' => $this->resolveOrtuForDb($item),
             'LastUpdate' => Carbon::now(),
         ];
+
+        if ($this->isBlankKelas($payload['DESC02'] ?? null)) {
+            throw new Exception('KELAS wajib diisi. Siswa tanpa kelas tidak dapat disimpan.');
+        }
 
         if ($existingCust) {
             $payload['NOCUST'] = $metodeByNodaftar ? ($item['nis'] ?? $existingCust->NOCUST) : $existingCust->NOCUST;

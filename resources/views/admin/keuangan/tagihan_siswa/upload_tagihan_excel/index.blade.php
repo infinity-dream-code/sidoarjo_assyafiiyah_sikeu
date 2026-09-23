@@ -4,7 +4,46 @@
     <link rel="stylesheet" href="{{asset('main/libs/datatables-bs5/datatables.bootstrap5.css')}}">
     <link rel="stylesheet" href="{{asset('main/libs/datatables-responsive-bs5/responsive.bootstrap5.css')}}">
     <link rel="stylesheet" href="{{asset('main/libs/datatables-buttons-bs5/buttons.bootstrap5.css')}}">
+    <link rel="stylesheet" href="{{asset('main/libs/select2/select2.min.css')}}">
     <style>
+        .upload-tagihan-toolbar {
+            background: #f8f9fb;
+        }
+
+        .upload-tagihan-toolbar .form-label {
+            margin-bottom: 0.4rem;
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: #566a7f;
+        }
+
+        .upload-tagihan-toolbar .select2-container {
+            width: 100% !important;
+        }
+
+        .upload-tagihan-toolbar .form-select,
+        .upload-tagihan-toolbar .select2-container .select2-selection {
+            min-height: 38px;
+        }
+
+        .upload-tagihan-bta {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.65rem;
+            padding: 0.35rem 0.65rem;
+            border-radius: 0.375rem;
+            background: #fff;
+            border: 1px dashed #d9dee3;
+            font-size: 0.8125rem;
+            color: #697a8d;
+        }
+
+        .upload-tagihan-bta .badge {
+            font-size: 0.8125rem;
+            letter-spacing: 0.04em;
+        }
+
         #main_table_wrapper .dataTables_length,
         #main_table_wrapper .dataTables_filter {
             padding: 0.75rem 1.25rem 0;
@@ -45,21 +84,84 @@
         @endif
     </ul>
 
+    @php
+        $bulanList = [
+            1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+            5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+            9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember',
+        ];
+    @endphp
+
     <div class="card">
         <div class="card-header header-elements">
             <div class="card-title">
                 <h5 class="mb-0">{{ $dataTitle ?? $mainTitle }}</h5>
-                <div class="text-muted small mt-1">
-                    Kolom Excel: NIS, Nominal, Nama Tagihan, Periode, Tahun Akademik, Cicil
-                </div>
             </div>
-            <div class="card-header-elements ms-auto">
+            <div class="card-header-elements ms-auto d-flex gap-2">
+                <button type="button" class="btn btn-outline-danger js-clear-import" title="Clear data import">
+                    <span class="ri-delete-bin-line me-2"></span>
+                    Clear
+                </button>
                 <button type="button" class="btn btn-whatsapp" data-bs-toggle="modal"
                         data-bs-target="#modal-import" title="Import Excel">
                     <span class="ri-file-excel-2-line me-2"></span>
                     Import Excel
                 </button>
             </div>
+        </div>
+
+        <div class="card-body border-bottom upload-tagihan-toolbar py-4">
+            <form id="filterForm">
+                <div class="row g-4">
+                    <div class="col-md-6 col-xl-5">
+                        <label class="required form-label" for="tagihan">Jenis Tagihan</label>
+                        <select class="form-select" id="tagihan" name="tagihan" required
+                                data-control="select2" data-placeholder="Pilih jenis tagihan">
+                            @isset($tagihan)
+                                @foreach($tagihan as $item)
+                                    <option value="{{ $item->urut }}">{{ $item->tagihan }}</option>
+                                @endforeach
+                            @else
+                                <option value="">Data kosong</option>
+                            @endisset
+                        </select>
+                    </div>
+                    <div class="col-md-6 col-xl-7">
+                        <label class="required form-label" for="periode_tahun">Periode Tagihan</label>
+                        <div class="row g-2">
+                            <div class="col-sm-6">
+                                <select class="form-select" id="periode_tahun" name="periode_tahun"
+                                        required data-control="select2" data-placeholder="Pilih tahun">
+                                    @foreach(($periode_tahun_list ?? []) as $tahun)
+                                        <option value="{{ $tahun }}"
+                                            @selected(($periode_tahun_default ?? date('Y')) == $tahun)>
+                                            {{ $tahun }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-sm-6">
+                                <select class="form-select" id="periode_bulan" name="periode_bulan"
+                                        data-control="select2" data-placeholder="Pilih bulan" data-allow-clear="true">
+                                    <option value="">Tanpa bulan</option>
+                                    @foreach($bulanList as $bulan => $label)
+                                        <option value="{{ $bulan }}"
+                                            @selected(($periode_bulan_default ?? date('n')) == $bulan)>
+                                            {{ $label }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        <div class="upload-tagihan-bta">
+                            <i class="ri-calendar-line"></i>
+                            <span>Kode BTA</span>
+                            <span class="badge bg-primary" id="periode_preview">-</span>
+                        </div>
+                        <div class="form-text">Kosongkan bulan untuk tagihan tanpa periode bulanan (PSB). Kode BTA jadi tahun saja, misalnya <strong>2026</strong>.</div>
+                    </div>
+                </div>
+            </form>
         </div>
 
         <div class="card-datatable table-responsive text-nowrap">
@@ -69,7 +171,11 @@
             </table>
         </div>
 
-        <div class="card-footer d-flex justify-content-end border-top">
+        <div class="card-footer d-flex justify-content-end gap-2 border-top">
+            <button type="button" class="btn btn-outline-danger js-clear-import">
+                <span class="ri-delete-bin-line me-2"></span>
+                Clear
+            </button>
             <button type="button" class="btn btn-primary" data-bs-toggle="modal"
                     data-bs-target="#modal-validate">
                 <span class="ri-save-line me-2"></span>
@@ -82,6 +188,7 @@
 @section('script')
     <script src="{{asset('main/libs/datatables-bs5/datatables-bootstrap5.js')}}"></script>
     <script src="{{asset('js/datatableCustom/Datatable-0-4.min.js')}}"></script>
+    <script src="{{asset('main/libs/select2/select2.min.js')}}"></script>
 
     <form id="formImport" enctype="multipart/form-data" class="mainForm"
           method="POST">
@@ -98,11 +205,13 @@
                         <ul class="list-group list-group-timeline mb-3">
                             <li class="list-group-item list-group-timeline-danger">File harus berformat <span class="fw-bold">XLS/XLSX</span>.</li>
                             <li class="list-group-item list-group-timeline-danger">Ukuran file tidak boleh lebih dari <span class="fw-bold">1024KB/1MB</span>.</li>
-                            <li class="list-group-item list-group-timeline-danger">Kolom yang harus terisi: <span class="fw-bold">NIS, NOMINAL, NAMA_TAGIHAN, PERIODE, TAHUN_AKADEMIK, CICIL</span>.</li>
+                            <li class="list-group-item list-group-timeline-danger">Format sama dengan <span class="fw-bold">Import Data Siswa</span>, ditambah kolom <span class="fw-bold">NOMINAL</span>.</li>
+                            <li class="list-group-item list-group-timeline-danger">Kolom wajib: <span class="fw-bold">NIS, Nama, Unit, Kelas, Kelompok, Angkatan, Nominal</span>.</li>
+                            <li class="list-group-item list-group-timeline-danger">Kolom opsional: <span class="fw-bold">Gender, Alamat, Ortu</span>. Satu file bisa dipakai di menu Data Siswa dan Buat Tagihan Excel.</li>
                             <li class="list-group-item list-group-timeline-danger">Contoh file yang dapat diproses untuk import:
                                 <a class="btn btn-sm btn-outline-primary fw-bolder"
-                                   href="{{ asset('contoh_excel/TEMPLATE BUAT TAGIHAN.xlsx') }}?v={{ filemtime(public_path('contoh_excel/TEMPLATE BUAT TAGIHAN.xlsx')) }}"
-                                   download="TEMPLATE BUAT TAGIHAN.xlsx">
+                                   href="{{asset('TEMPLATE MENU UPLOAD DATA SISWA.xlsx')}}?v=20260923-syukro"
+                                   download>
                                     <i class="ri ri-file-excel-line me-2"></i>Contoh File
                                 </a>
                             </li>
@@ -152,7 +261,7 @@
                             <span class="ri-save-line ri-48px"></span>
                             <h3>Simpan Data Tagihan Siswa?</h3>
                             <div class="">
-                                Data yang valid akan disimpan sebagai tagihan siswa.
+                                Anda yakin ingin menyimpan data tagihan yang telah diimport?
                             </div>
                         </div>
                     </div>
@@ -184,10 +293,12 @@
     <script src="{{asset('js/helper/errorInputHelper.min.js')}}"></script>
 
     <script type="text/javascript">
+        const select2 = $(`[data-control='select2']`);
         let filePondElements = [];
 
         let dtOptions = {
             tableId: 'main_table',
+            formId: 'filterForm',
             columnUrl: '{{($columnsUrl??null)}}',
             dataUrl: '{{($datasUrl??null)}}',
             dataColumns: [],
@@ -216,6 +327,10 @@
                     'application/wps-office.xlsx',
                     'application/wps-office.xls'
                 ],
+                // fileValidateTypeDetectType: (source, type) => new Promise((resolve, reject) => {
+                //     console.log(source, type);
+                //     resolve(type);
+                // }),
                 required: false,
                 storeAsFile: true,
                 labelIdle: 'Klik untuk membuka file manager, atau seret file ke dalam box ini.',
@@ -231,6 +346,18 @@
 
         function resetFilePond(id) {
             filePondElements[id].removeFiles();
+        }
+
+        function updateFilterWindowLocation(form){
+            let baseUrl = window.location.origin + window.location.pathname;
+            let queryParams = $.param($(`#${form}`).serializeArray().reduce(function (acc, curr) {
+                if (curr.value !== '') {
+                    acc[curr.name] = curr.value;
+                }
+                return acc;
+            }, {}));
+            let newUrl = baseUrl + '?' + queryParams;
+            window.history.pushState(null, '', newUrl);
         }
 
         async function parseJsonResponse(response) {
@@ -268,6 +395,18 @@
             return formData;
         }
 
+        function syncPeriodePreview() {
+            const tahun = $('#periode_tahun').val();
+            const bulanVal = $('#periode_bulan').val();
+            if (tahun && bulanVal) {
+                $('#periode_preview').text(`${tahun}${String(bulanVal).padStart(2, '0')}`);
+            } else if (tahun) {
+                $('#periode_preview').text(tahun);
+            } else {
+                $('#periode_preview').text('-');
+            }
+        }
+
         document.addEventListener("DOMContentLoaded", function () {
             FilePond.registerPlugin(
                 FilePondPluginFileValidateType,
@@ -278,6 +417,40 @@
 
             if (dtOptions.dataUrl && dtOptions.columnUrl) {
                 getDT(dtOptions);
+                if (dtOptions.formId) {
+                    let filterForm = $(`#${dtOptions.formId}`);
+                    filterForm.on('submit', function (e) {
+                        e.preventDefault();
+                        dataReload(dtOptions.tableId);
+                    });
+                    filterForm.on('reset', function (e) {
+                        setTimeout(function () {
+                            dataReload(dtOptions.tableId);
+                            const select2InForm = select2.filter(`#${dtOptions.formId} [data-control='select2']`);
+                            if (select2InForm.length) {
+                                select2InForm.each(function () {
+                                    let $this = $(this);
+                                    $this.trigger('change');
+                                });
+                            }
+                            updateFilterWindowLocation(dtOptions.formId);
+                            dataReFilter(dtOptions.tableId);
+                        }, 0)
+                    });
+                }
+            }
+            if (select2.length) {
+                select2.each(function () {
+                    let $this = $(this);
+                    // select2Focus($this);
+                    $this.wrap('<div class="position-relative"></div>').select2({
+                        placeholder: $this.data('placeholder') || 'Pilih',
+                        language: 'id',
+                        dropdownParent: $this.parent(),
+                        width: '100%',
+                        allowClear: $this.data('allow-clear') === true,
+                    });
+                });
             }
 
             document.querySelectorAll(".mainForm").forEach(form => {
@@ -295,7 +468,8 @@
                         method = 'POST';
                         formData = appendImportFileToFormData(formData);
                     } else if (formId === "formValidate") {
-                        formData = new FormData();
+                        let form = document.getElementById('filterForm');
+                        formData = new FormData(form);
                         loadingAlert('Menyimpan data tagihan');
                         url = '{{route('admin.keuangan.tagihan-siswa.upload-tagihan-excel.validate-excel')}}';
                         method = 'POST';
@@ -343,11 +517,11 @@
                             }
 
                             const errorMessages = {
-                                401: '',
+                                401: 'Sesi anda sudah habis 🙏 <br>Silahkan muat ulang halaman untuk melanjutkan! <br> jika masalah masih terjadi silahkan login kembali!',
                                 403: 'Anda tidak memiliki izin untuk mengakses halaman ini 😖',
                                 404: 'Halaman yang dituju tidak ditemukan 🧐',
                                 405: 'Metode tidak valid 🧐 <br>silahkan muat ulang halaman dan coba lagi!',
-                                419: '',
+                                419: 'Sesi anda sudah habis 🙏 <br>Silahkan muat ulang halaman untuk melanjutkan! <br> jika masalah masih terjadi silahkan login kembali!',
                                 429: 'Terlalu banyak permintaan akses <br>silahkan tunggu beberapa saat 🙏',
                             };
 
@@ -371,6 +545,47 @@
                     }
 
                     clearErrorMessages(form.id);
+                    setTimeout(() => {
+                        modal.querySelectorAll("[data-control='select2']").forEach(select => {
+                            $(select).trigger("change");
+                        });
+                    }, 0);
+                });
+            });
+
+            $('#periode_tahun, #periode_bulan').on('change', syncPeriodePreview);
+            syncPeriodePreview();
+
+            document.querySelectorAll('.js-clear-import').forEach(function (button) {
+                button.addEventListener('click', function () {
+                    loadingAlert('Membersihkan data import');
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                    const formData = new FormData();
+                    formData.append('_token', csrfToken);
+
+                    fetch('{{ route('admin.keuangan.tagihan-siswa.upload-tagihan-excel.clear') }}', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': csrfToken,
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                        body: formData,
+                    })
+                        .then(async function (response) {
+                            const payload = await parseJsonResponse(response);
+                            if (!response.ok) {
+                                throw {status: response.status, payload};
+                            }
+                            return payload;
+                        })
+                        .then(function (data) {
+                            successAlert(data.message || 'Data import telah dibersihkan');
+                            dataReload('main_table');
+                        })
+                        .catch(function (error) {
+                            errorAlert((error.payload && error.payload.message) || error.message || 'Gagal membersihkan data import');
+                        });
                 });
             });
         });

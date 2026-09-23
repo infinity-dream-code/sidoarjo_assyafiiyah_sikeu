@@ -31,25 +31,28 @@ class ImportDataSiswa implements WithMultipleSheets, ToCollection, WithHeadingRo
             }
 
             $rowData = $row->toArray();
-            $rowData['unit'] = trim((string) ($rowData['unit'] ?? ''));
-            $rowData['kelas'] = is_numeric($rowData['kelas'] ?? null)
-                ? (string) (int) $rowData['kelas']
-                : trim((string) ($rowData['kelas'] ?? ''));
-            $rowData['kelompok'] = trim((string) ($rowData['kelompok'] ?? ''));
-            $rowData['nama'] = trim((string) ($rowData['nama'] ?? ''));
-            $rowData['angkatan'] = trim((string) ($rowData['angkatan'] ?? ''));
+            $rowData['unit'] = $this->normalizeRequiredText($rowData['unit'] ?? null);
+            $rowData['kelas'] = $this->normalizeKelas($rowData['kelas'] ?? $rowData['kelassiswa'] ?? null);
+            $rowData['kelompok'] = $this->normalizeRequiredText($rowData['kelompok'] ?? null);
+            $rowData['nama'] = $this->normalizeRequiredText($rowData['nama'] ?? null);
+            $rowData['angkatan'] = $this->normalizeRequiredText($rowData['angkatan'] ?? null);
 
-            $nis = isset($rowData['nis']) ? trim((string) $rowData['nis']) : '';
-            $nodaftar = isset($rowData['nodaftar']) ? trim((string) $rowData['nodaftar']) : '';
+            $nis = $this->normalizeId($rowData['nik'] ?? null);
+            if ($nis === '') {
+                $nis = $this->normalizeId($rowData['nis'] ?? null);
+            }
+            $nodaftar = $this->normalizeId($rowData['nodaftar'] ?? null);
             $rowData['nis'] = $nis !== '' ? $nis : null;
+            $rowData['nik'] = $rowData['nis'];
             $rowData['nodaftar'] = $nodaftar !== '' ? $nodaftar : null;
-            $rowData['ortu'] = trim((string) ($rowData['ortu'] ?? $rowData['genus'] ?? $rowData['ayah'] ?? '')) ?: null;
+            $rowData['ortu'] = $this->normalizeRequiredText($rowData['ortu'] ?? $rowData['genus'] ?? $rowData['ayah'] ?? '') ?: null;
 
             $parsedRows[] = $rowData;
         }
 
         if (empty($parsedRows)) {
             Cache::forget($cacheKey);
+
             return;
         }
 
@@ -71,24 +74,31 @@ class ImportDataSiswa implements WithMultipleSheets, ToCollection, WithHeadingRo
 
             if (!$rowData['nis'] && !$rowData['nodaftar']) {
                 $rowData['status'] = 0;
-                $statusKet = 'NIS atau Nomor Pendaftaran wajib diisi';
+                $statusKet = 'NIK atau Nomor Pendaftaran wajib diisi';
             }
 
             foreach ($requiredKeys as $column) {
-                if (trim((string) ($rowData[$column] ?? '')) === '') {
+                if ($this->isBlank($rowData[$column] ?? null)) {
                     $rowData['status'] = 0;
-                    $statusKet = $this->appendKet($statusKet, strtoupper($column) . ' wajib diisi');
+                    $label = $column === 'kelas' ? 'KELAS' : strtoupper($column);
+                    $statusKet = $this->appendKet($statusKet, $label.' wajib diisi');
                 }
+            }
+
+            // Kelas wajib keras: tanpa kelas baris tidak boleh disimpan
+            if ($this->isBlank($rowData['kelas'] ?? null)) {
+                $rowData['status'] = 0;
+                $statusKet = $this->appendKet($statusKet, 'KELAS wajib diisi (tidak boleh kosong)');
             }
 
             if ($rowData['nis'] && !is_numeric($rowData['nis'])) {
                 $rowData['status'] = 0;
-                $statusKet = $this->appendKet($statusKet, 'NIS harus berupa angka');
+                $statusKet = $this->appendKet($statusKet, 'NIK harus berupa angka');
             } elseif ($rowData['nis'] && isset($existingNis[$rowData['nis']]) && (int) $rowData['status'] !== 0) {
                 $rowData['status'] = 2;
                 $statusKet = $this->appendKet(
                     $statusKet,
-                    "Siswa dengan NIS {$rowData['nis']} sudah ada, data akan diupdate"
+                    "Siswa dengan NIK {$rowData['nis']} sudah ada, data akan diupdate"
                 );
             }
 
@@ -110,13 +120,112 @@ class ImportDataSiswa implements WithMultipleSheets, ToCollection, WithHeadingRo
         Cache::put($cacheKey, $processedData, now()->addMinutes(60));
     }
 
+    private function normalizeKelas(mixed $value): string
+    {
+        // Sel Excel kosong pada kolom angka sering jadi 0 — anggap kosong
+        if ($value === null || $value === false || $value === '') {
+            return '';
+        }
+
+        if (is_int($value) || is_float($value)) {
+            if ((float) $value == 0.0) {
+                return '';
+            }
+
+            return abs($value - (int) $value) < 0.00001
+                ? (string) (int) $value
+                : rtrim(rtrim(sprintf('%.8F', $value), '0'), '.');
+        }
+
+        $text = trim((string) $value);
+        if ($this->isBlank($text)) {
+            return '';
+        }
+
+        if (is_numeric($text) && (float) $text == 0.0) {
+            return '';
+        }
+
+        if (is_numeric($text) && !str_contains($text, '.')) {
+            return (string) (int) $text;
+        }
+
+        return $text;
+    }
+
+    private function normalizeRequiredText(mixed $value): string
+    {
+        if ($value === null || $value === false) {
+            return '';
+        }
+
+        $text = trim((string) $value);
+        if ($this->isBlank($text)) {
+            return '';
+        }
+
+        return $text;
+    }
+
+    private function normalizeId(mixed $value): string
+    {
+        if ($value === null || $value === false || $value === '') {
+            return '';
+        }
+
+        if (is_int($value) || is_float($value)) {
+            if ((float) $value == 0.0) {
+                return '';
+            }
+
+            return sprintf('%.0f', $value);
+        }
+
+        $text = trim((string) $value);
+        if ($this->isBlank($text)) {
+            return '';
+        }
+
+        if (is_numeric($text)) {
+            return sprintf('%.0f', (float) $text);
+        }
+
+        return $text;
+    }
+
+    private function isBlank(mixed $value): bool
+    {
+        if ($value === null || $value === false) {
+            return true;
+        }
+
+        if (is_int($value) || is_float($value)) {
+            return (float) $value == 0.0;
+        }
+
+        $text = strtolower(trim((string) $value));
+
+        return $text === ''
+            || $text === '-'
+            || $text === 'null'
+            || $text === 'n/a'
+            || $text === 'na'
+            || $text === 'none'
+            || $text === '0'
+            || $text === '0.0';
+    }
+
     private function appendKet(?string $current, string $message): string
     {
         if ($current === null || $current === '') {
             return $message;
         }
 
-        return $current . ', ' . $message;
+        if (str_contains($current, $message)) {
+            return $current;
+        }
+
+        return $current.', '.$message;
     }
 
     public function headingRow(): int

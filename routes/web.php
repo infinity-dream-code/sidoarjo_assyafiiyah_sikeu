@@ -139,6 +139,7 @@ Route::prefix("admin")
                         Route::get("get-data", "getData")->name("get-data");
                         Route::get("get-column", "getColumn")->name("get-column");
                         Route::post("validate-excel", "validateExcel")->name("validate-excel");
+                        Route::post("clear", "clear")->name("clear");
                         Route::resource("", \App\Http\Controllers\Admin\Keuangan\TagihanSiswa\UploadTagihanExcelController::class)->parameters(["" => "id"]);
                     });
                 });

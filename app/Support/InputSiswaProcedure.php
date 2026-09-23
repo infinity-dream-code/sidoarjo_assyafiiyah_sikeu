@@ -26,12 +26,17 @@ class InputSiswaProcedure
         ?string $ortu = null,
         ?string $code05 = null,
     ): void {
+        $kelas = trim($desc02);
+        if ($kelas === '' || $kelas === '-' || $kelas === '0') {
+            throw new \InvalidArgumentException('KELAS wajib diisi. Siswa tanpa kelas tidak dapat disimpan.');
+        }
+
         $pdo = DB::connection('DATA_MYSQL')->getPdo();
         $stmt = $pdo->prepare('CALL InputSiswa(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
         $stmt->execute([
             self::limit($nimRaw, 15),
             self::limit($namaRaw, 70),
-            self::limit($desc02, 50),
+            self::limit($kelas, 50),
             self::limit($code02, 50),
             self::limit($code01, 5),
             self::limit($desc03, 50),
