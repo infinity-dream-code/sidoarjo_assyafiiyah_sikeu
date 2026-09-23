@@ -162,7 +162,10 @@ class ExportImportDataController extends Controller
             }, $headings);
             $missingColumns = [];
             $hasNik = in_array('nik', $headings, true) || in_array('nis', $headings, true);
-            $hasNodaftar = in_array('nodaftar', $headings, true);
+            $hasNodaftar = in_array('nodaftar', $headings, true)
+                || in_array('nopendaftaran', $headings, true)
+                || in_array('nopend', $headings, true)
+                || in_array('num2nd', $headings, true);
 
             if (!$hasNik && !$hasNodaftar) {
                 $missingColumns[] = 'NIK / NODAFTAR';
@@ -294,8 +297,16 @@ class ExportImportDataController extends Controller
                     return response()->json(['message' => 'Tidak ada data siswa yang berhasil diproses'], 422);
                 }
             } elseif ($request->metode == '2') {
-                $rows = array_filter($data, fn ($item) => !empty($item['nodaftar'] ?? null));
+                $rows = array_filter($data, function ($item) {
+                    $item = $this->normalizeImportItem(is_array($item) ? $item : []);
+                    $nodaftar = $item['nodaftar'] ?? null;
+                    $nis = $item['nis'] ?? null;
 
+                    // Boleh dari kolom nodaftar, atau dari NIS bila mau dikonversi ke nomor daftar
+                    return !empty($nodaftar) || !empty($nis);
+                });
+
+                $saved = 0;
                 foreach ($rows as $item) {
                     if ((int) ($item['status'] ?? 1) === 0) {
                         continue;
@@ -304,49 +315,33 @@ class ExportImportDataController extends Controller
                         continue;
                     }
                     $item = $this->normalizeImportItem($item);
-                    $lookupKey = $item['nodaftar'] ?? '';
 
-                    if ($lookupKey === '' || strlen($lookupKey) > 10) {
+                    // Intent metode 2 = simpan sebagai nomor daftar.
+                    // Jika nodaftar kosong tapi NIS terisi → konversi NIS menjadi nodaftar.
+                    // Jika keduanya sama → tetap konversi (jangan biarkan NOCUST=NUM2ND).
+                    if (empty($item['nodaftar']) && !empty($item['nis'])) {
+                        $item['nodaftar'] = $item['nis'];
+                        $item['nis'] = null;
+                    } elseif (!empty($item['nodaftar']) && !empty($item['nis']) && $item['nodaftar'] === $item['nis']) {
+                        $item['nis'] = null;
+                    }
+
+                    $nodaftar = (string) ($item['nodaftar'] ?? '');
+                    if ($nodaftar === '' || strlen($nodaftar) > 10) {
                         continue;
                     }
 
-                    $existingCust = scctcust::where('NUM2ND', $item['nodaftar'])->first();
-
-                    // Konversi NIS → nodaftar: nilai dipindah ke kolom nodaftar,
-                    // record lama masih punya NOCUST = nilai itu dan NUM2ND kosong.
-                    if (!$existingCust) {
-                        $byFormerNis = scctcust::where('NOCUST', $item['nodaftar'])->first();
-                        if ($byFormerNis && $this->isBlankCustId($byFormerNis->NUM2ND)) {
-                            $payload = $this->buildScctcustPayload($item, true, $byFormerNis);
-                            $payload['NUM2ND'] = $item['nodaftar'];
-                            $payload['NOCUST'] = !empty($item['nis']) ? (string) $item['nis'] : '-';
-                            $byFormerNis->update($payload);
-                            continue;
-                        }
+                    if ($this->saveSiswaByNodaftar($item, $nodaftar)) {
+                        $saved++;
                     }
+                }
 
-                    if (!$existingCust) {
-                        if (!empty($item['nis'])) {
-                            $existingNis = scctcust::where('NOCUST', $item['nis'])->first();
-                            if ($existingNis) {
-                                // Siswa sudah ada by NIS — isi/update nomor daftar, jangan create duplikat
-                                $payload = $this->buildScctcustPayload($item, true, $existingNis);
-                                $payload['NOCUST'] = $existingNis->NOCUST;
-                                $payload['NUM2ND'] = $item['nodaftar'];
-                                $existingNis->update($payload);
-                                continue;
-                            }
-                        }
+                if ($saved === 0) {
+                    $connection->rollBack();
 
-                        scctcust::create($this->buildScctcustPayload($item));
-                    } else {
-                        $payload = $this->buildScctcustPayload($item, true, $existingCust);
-                        // Izinkan kosongkan NIS saat simpan by nodaftar (konversi penuh)
-                        if (array_key_exists('nis', $item) && ($item['nis'] === null || $item['nis'] === '')) {
-                            $payload['NOCUST'] = '-';
-                        }
-                        $existingCust->update($payload);
-                    }
+                    return response()->json([
+                        'message' => 'Tidak ada data yang tersimpan. Pastikan kolom NODAFTAR (atau NIS yang dikonversi) terisi, status baris valid, dan pilih metode "SIMPAN dengan Nomor Pendaftaran".',
+                    ], 422);
                 }
             } elseif ($request->metode == '3') {
                 $rows = array_filter($data, fn ($item) => !empty($item['nis'] ?? null));
@@ -484,6 +479,93 @@ class ExportImportDataController extends Controller
         $text = trim((string) $value);
 
         return $text === '' || $text === '-';
+    }
+
+    /**
+     * Simpan/update siswa by nomor daftar + konversi NIS→nodaftar.
+     * Membersihkan duplikat (NOCUST = nilai nodaftar di baris lain).
+     */
+    private function saveSiswaByNodaftar(array $item, string $nodaftar): bool
+    {
+        $byNodaftar = scctcust::where('NUM2ND', $nodaftar)->first();
+        $byNis = scctcust::where('NOCUST', $nodaftar)->first();
+
+        // Target: satu record dengan NUM2ND=nodaftar dan NOCUST='-' (kecuali nis beda diisi)
+        $keepNis = !empty($item['nis']) && (string) $item['nis'] !== $nodaftar
+            ? (string) $item['nis']
+            : '-';
+
+        if ($byNodaftar && $byNis && (int) $byNodaftar->CUSTID !== (int) $byNis->CUSTID) {
+            // Sudah dobel: update baris nodaftar, hapus baris NIS lama
+            $payload = $this->buildScctcustPayload($item, true, $byNodaftar);
+            $payload['NUM2ND'] = $nodaftar;
+            $payload['NOCUST'] = $keepNis;
+            $byNodaftar->update($payload);
+            $byNis->delete();
+
+            return true;
+        }
+
+        if ($byNodaftar) {
+            $payload = $this->buildScctcustPayload($item, true, $byNodaftar);
+            $payload['NUM2ND'] = $nodaftar;
+            $payload['NOCUST'] = $keepNis;
+            $byNodaftar->update($payload);
+            $this->deleteOrphanNisDuplicates($nodaftar, (int) $byNodaftar->CUSTID);
+
+            return true;
+        }
+
+        if ($byNis) {
+            // Konversi record NIS → nomor daftar
+            $payload = $this->buildScctcustPayload($item, true, $byNis);
+            $payload['NUM2ND'] = $nodaftar;
+            $payload['NOCUST'] = $keepNis;
+            $byNis->update($payload);
+            $this->deleteOrphanNisDuplicates($nodaftar, (int) $byNis->CUSTID);
+
+            return true;
+        }
+
+        if (!empty($item['nis'])) {
+            $existingNis = scctcust::where('NOCUST', $item['nis'])->first();
+            if ($existingNis) {
+                $payload = $this->buildScctcustPayload($item, true, $existingNis);
+                $payload['NOCUST'] = $keepNis;
+                $payload['NUM2ND'] = $nodaftar;
+                $existingNis->update($payload);
+
+                return true;
+            }
+        }
+
+        $createItem = $item;
+        $createItem['nis'] = $keepNis === '-' ? null : $keepNis;
+        $createItem['nodaftar'] = $nodaftar;
+        scctcust::create($this->buildScctcustPayload($createItem));
+
+        return true;
+    }
+
+    private function deleteOrphanNisDuplicates(string $number, int $keepCustId): void
+    {
+        scctcust::query()
+            ->where('CUSTID', '!=', $keepCustId)
+            ->where(function ($q) use ($number) {
+                $q->where('NOCUST', $number)
+                    ->orWhere('NUM2ND', $number);
+            })
+            ->get()
+            ->each(function (scctcust $row) use ($number) {
+                $nocustBlank = $this->isBlankCustId($row->NOCUST);
+                $num2ndBlank = $this->isBlankCustId($row->NUM2ND);
+                $isOrphanNis = (string) $row->NOCUST === $number && $num2ndBlank;
+                $isOrphanNodaf = (string) $row->NUM2ND === $number && $nocustBlank;
+
+                if ($isOrphanNis || $isOrphanNodaf) {
+                    $row->delete();
+                }
+            });
     }
 
     /** Nama ortu/wali utama (kolom ortu / genus / ayah di Excel). */

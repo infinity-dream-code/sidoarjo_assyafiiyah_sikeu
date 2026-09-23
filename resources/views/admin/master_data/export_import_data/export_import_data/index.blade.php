@@ -102,7 +102,8 @@
                         <ul class="list-group list-group-timeline mb-3">
                             <li class="list-group-item list-group-timeline-danger">File harus berformat <span class="fw-bold">XLS/XLSX</span>.</li>
                             <li class="list-group-item list-group-timeline-danger">Ukuran file tidak boleh lebih dari <span class="fw-bold">1024KB/1MB</span>.</li>
-                            <li class="list-group-item list-group-timeline-danger">Kolom wajib: <span class="fw-bold">NIS, Nama, Unit, Kelas, Kelompok, Angkatan</span>.</li>
+                            <li class="list-group-item list-group-timeline-danger">Kolom identitas: isi <span class="fw-bold">NIS</span> atau <span class="fw-bold">NODAFTAR</span> (salah satu). Kolom lain wajib: <span class="fw-bold">Nama, Unit, Kelas, Kelompok, Angkatan</span>.</li>
+                            <li class="list-group-item list-group-timeline-danger">Konversi NIS → nomor daftar: kosongkan NIS, isi NODAFTAR, lalu simpan dengan metode <span class="fw-bold">SIMPAN / konversi ke Nomor Pendaftaran</span>.</li>
                             <li class="list-group-item list-group-timeline-danger">Kolom opsional: <span class="fw-bold">Gender, Alamat, Ortu, Nominal</span> (bukan Ayah/Ibu). Kolom Nominal diabaikan di sini, dipakai jika file yang sama diimport di Buat Tagihan Excel.</li>
                             <li class="list-group-item list-group-timeline-danger">Contoh file yang dapat diproses untuk import:
                                 <a class="btn btn-sm btn-outline-primary fw-bolder"
@@ -166,7 +167,7 @@
                                     <label class="form-label" for="metode">Metode Penyimpanan <span class="text-danger">*</span></label>
                                     <select class="form-select" id="metode" name="metode" required>
                                         <option value="1">SIMPAN data siswa dengan NIS</option>
-                                        <option value="2">SIMPAN data siswa dengan Nomor Pendaftaran</option>
+                                        <option value="2">SIMPAN / konversi ke Nomor Pendaftaran</option>
                                         <option value="3">UPDATE Kelas Siswa</option>
                                         <option value="4">UPGRADE Nomor Pendaftaran ke NIS</option>
                                     </select>
