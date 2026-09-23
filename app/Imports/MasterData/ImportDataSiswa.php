@@ -43,14 +43,7 @@ class ImportDataSiswa implements WithMultipleSheets, ToCollection, WithHeadingRo
             if ($nis === '') {
                 $nis = $this->normalizeId($rowData['nis'] ?? null);
             }
-            $nodaftar = $this->normalizeId(
-                $rowData['nodaftar']
-                ?? $rowData['nopendaftaran']
-                ?? $rowData['no_pendaftaran']
-                ?? $rowData['nopend']
-                ?? $rowData['num2nd']
-                ?? null
-            );
+            $nodaftar = $this->normalizeId($rowData['nodaftar'] ?? null);
             $rowData['nis'] = $nis !== '' ? $nis : null;
             $rowData['nik'] = $rowData['nis'];
             $rowData['nodaftar'] = $nodaftar !== '' ? $nodaftar : null;
