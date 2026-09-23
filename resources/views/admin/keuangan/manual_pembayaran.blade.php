@@ -722,7 +722,7 @@
             const tandaTangan = @json($tanda_tangan);
             const userName = "{{ Auth::user()->name }}";
             const domisili = "{{ config('app.domisili') }}";
-            const APP_VA_PREFIX = @json((string) (config('app.nova') ?: '797783'));
+            const APP_VA_PREFIX = @json((string) (config('app.nova') ?: '751095'));
 
             const showVA = function (nis) {
                 if (typeof formatNoVA === 'function') return formatNoVA(nis, APP_VA_PREFIX);

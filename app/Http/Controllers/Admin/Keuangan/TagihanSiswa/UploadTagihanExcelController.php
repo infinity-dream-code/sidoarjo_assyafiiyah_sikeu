@@ -167,8 +167,7 @@ class UploadTagihanExcelController extends Controller
                 $formattedMissingColumns = implode(', ', array_map([$this, 'displayColumn'], $missingColumns));
                 throw new \Exception(
                     "Kolom {$formattedMissingColumns} tidak ditemukan.<br><hr>".
-                    'pastikan kolom berikut ada: <b>NIS, Nama, Unit, Kelas, Kelompok, Angkatan, Nominal</b>.'.
-                    '<br>Format sama dengan Import Data Siswa, ditambah kolom NOMINAL.'
+                    'Kolom wajib: <b>NIS (atau NIK) dan Nominal</b>. Kolom lain opsional.'
                 );
             }
 

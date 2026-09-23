@@ -15,12 +15,8 @@ class ImportTagihanExcel implements WithMultipleSheets, ToCollection, WithHeadin
 {
     public const CACHE_KEY = 'import_tagihan_excel';
 
+    /** Header wajib selain NIS/NIK (dicek terpisah di controller). */
     public const REQUIRED_COLUMNS = [
-        'nama',
-        'unit',
-        'kelas',
-        'kelompok',
-        'angkatan',
         'nominal',
     ];
 
@@ -80,19 +76,8 @@ class ImportTagihanExcel implements WithMultipleSheets, ToCollection, WithHeadin
                 if (!$siswa) {
                     $rowData['status'] = 0;
                     $statusKet[] = "NIS/NIK {$nis} tidak ditemukan";
-                }
-            }
-
-            if ($this->isBlankKelas($rowData['kelas'] ?? null)) {
-                $rowData['status'] = 0;
-                $statusKet[] = 'KELAS wajib diisi (tidak boleh kosong)';
-                $rowData['kelas'] = '';
-            }
-
-            foreach (['nama', 'unit', 'kelompok', 'angkatan'] as $column) {
-                if (trim((string) ($rowData[$column] ?? '')) === '') {
-                    $rowData['status'] = 0;
-                    $statusKet[] = strtoupper($column).' wajib diisi';
+                } elseif (trim((string) ($rowData['nama'] ?? '')) === '') {
+                    $rowData['nama'] = (string) ($siswa->NMCUST ?? '');
                 }
             }
 
