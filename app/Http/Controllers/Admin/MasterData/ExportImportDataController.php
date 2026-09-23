@@ -424,33 +424,87 @@ class ExportImportDataController extends Controller
                     ], 422);
                 }
             } elseif ($request->metode == '4') {
-                $rows = array_filter($data, fn ($item) => !empty($item['nodaftar'] ?? null) && !empty($item['nis'] ?? null));
+                // UPGRADE: Excel wajib ada NODAFTAR (lama) + NIS (baru)
+                $rows = array_filter($data, function ($item) {
+                    $item = $this->normalizeImportItem(is_array($item) ? $item : []);
 
+                    return !empty($item['nodaftar']) || !empty($item['nis']);
+                });
+
+                if (empty($rows)) {
+                    $connection->rollBack();
+
+                    return response()->json([
+                        'message' => 'Tidak ada baris untuk di-upgrade. Isi kolom NODAFTAR dan NIS di Excel.',
+                    ], 422);
+                }
+
+                $saved = 0;
                 foreach ($rows as $item) {
-                    if ((int) ($item['status'] ?? 1) === 0) {
-                        continue;
-                    }
                     $item = $this->normalizeImportItem($item);
-                    if (strlen((string) ($item['nodaftar'] ?? '')) > 10) {
-                        continue;
-                    }
-                    if (strlen((string) ($item['nis'] ?? '')) > 10) {
-                        continue;
-                    }
+                    $nodaftar = $item['nodaftar'] ?? null;
+                    $nis = $item['nis'] ?? null;
 
-                    $existingNis = scctcust::where('NOCUST', $item['nis'])->first();
-                    if ($existingNis) {
+                    if (empty($nodaftar) || empty($nis)) {
                         $connection->rollBack();
 
-                        return response()->json(['message' => 'Gagal, NIK :' . $item['nis'] . ' sudah ada!'], 422);
+                        return response()->json([
+                            'message' => 'UPGRADE gagal: setiap baris wajib isi NODAFTAR (lama) dan NIS (baru). Contoh: NODAFTAR=770081, NIS=770099.',
+                        ], 422);
                     }
 
-                    $existingCust = scctcust::where('NUM2ND', $item['nodaftar'])->first();
-                    if ($existingCust && in_array(trim((string) $existingCust->NOCUST), ['', '-'], true)) {
-                        $existingCust->update([
-                            'NOCUST' => $item['nis'],
-                        ]);
+                    if (strlen((string) $nodaftar) > 15 || strlen((string) $nis) > 15) {
+                        continue;
                     }
+
+                    $existingCust = scctcust::where('NUM2ND', $nodaftar)->first();
+                    if (!$existingCust) {
+                        $connection->rollBack();
+
+                        return response()->json([
+                            'message' => "UPGRADE gagal: Nomor Pendaftaran {$nodaftar} tidak ditemukan di database.",
+                        ], 422);
+                    }
+
+                    $currentNis = trim((string) ($existingCust->NOCUST ?? ''));
+                    if ($currentNis !== '' && $currentNis !== '-') {
+                        if ($currentNis === (string) $nis) {
+                            // Sudah ter-upgrade ke NIS yang sama
+                            $saved++;
+                            continue;
+                        }
+
+                        $connection->rollBack();
+
+                        return response()->json([
+                            'message' => "UPGRADE gagal: No Pendaftaran {$nodaftar} sudah punya NIS {$currentNis}. Kosongkan NIS dulu di DB jika ingin diganti.",
+                        ], 422);
+                    }
+
+                    $nisTaken = scctcust::where('NOCUST', $nis)
+                        ->where('CUSTID', '!=', $existingCust->CUSTID)
+                        ->first();
+                    if ($nisTaken) {
+                        $connection->rollBack();
+
+                        return response()->json([
+                            'message' => "UPGRADE gagal: NIS {$nis} sudah dipakai siswa lain.",
+                        ], 422);
+                    }
+
+                    $existingCust->update([
+                        'NOCUST' => (string) $nis,
+                        'LastUpdate' => Carbon::now(),
+                    ]);
+                    $saved++;
+                }
+
+                if ($saved === 0) {
+                    $connection->rollBack();
+
+                    return response()->json([
+                        'message' => 'Tidak ada data yang di-upgrade. Pastikan Excel punya kolom NIS dan NODAFTAR, keduanya terisi.',
+                    ], 422);
                 }
             }
 

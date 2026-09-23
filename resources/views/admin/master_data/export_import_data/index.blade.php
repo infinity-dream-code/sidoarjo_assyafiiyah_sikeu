@@ -102,7 +102,8 @@
                         <ul class="list-group list-group-timeline mb-3">
                             <li class="list-group-item list-group-timeline-danger">File harus berformat <span class="fw-bold">XLS/XLSX</span>.</li>
                             <li class="list-group-item list-group-timeline-danger">Ukuran file tidak boleh lebih dari <span class="fw-bold">1024KB/1MB</span>.</li>
-                            <li class="list-group-item list-group-timeline-danger">Kolom wajib: <span class="fw-bold">NIS, Nama, Unit, Kelas, Kelompok, Angkatan</span>.</li>
+                            <li class="list-group-item list-group-timeline-danger">Kolom wajib: <span class="fw-bold">NIS, Nama, Unit, Kelas, Kelompok, Angkatan</span> (atau NODAFTAR menggantikan NIS untuk siswa baru).</li>
+                            <li class="list-group-item list-group-timeline-danger">UPGRADE Nomor Pendaftaran ke NIS: Excel wajib isi <span class="fw-bold">NODAFTAR</span> (lama) dan <span class="fw-bold">NIS</span> (baru) di baris yang sama.</li>
                             <li class="list-group-item list-group-timeline-danger">Kolom opsional: <span class="fw-bold">Gender, Alamat, Ortu, Nominal</span> (bukan Ayah/Ibu). Kolom Nominal diabaikan di sini, dipakai jika file yang sama diimport di Buat Tagihan Excel.</li>
                             <li class="list-group-item list-group-timeline-danger">Contoh file yang dapat diproses untuk import:
                                 <a class="btn btn-sm btn-outline-primary fw-bolder"
