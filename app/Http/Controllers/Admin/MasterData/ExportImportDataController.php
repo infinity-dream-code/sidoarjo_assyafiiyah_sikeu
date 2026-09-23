@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin\MasterData;
 use App\Http\Controllers\Controller;
 use App\Imports\MasterData\ImportDataSiswa;
 use App\Models\mst_kelas;
+use App\Models\mst_sekolah;
 use App\Models\scctcust;
 use App\Models\ValidationMessage;
 use App\Support\InputSiswaProcedure;
@@ -312,6 +313,25 @@ class ExportImportDataController extends Controller
 
                     $existingCust = scctcust::where('NUM2ND', $item['nodaftar'])->first();
 
+                    $matchedKelas = mst_kelas::findForImport(
+                        $item['unit'] ?? null,
+                        $item['kelas'] ?? null,
+                        $item['kelompok'] ?? null,
+                    );
+                    if (!$matchedKelas) {
+                        $connection->rollBack();
+
+                        return response()->json([
+                            'message' => sprintf(
+                                'Kelas tidak ditemukan di Master Kelas untuk No Pendaftaran %s (Unit: %s, Kelas: %s, Kelompok: %s).',
+                                $item['nodaftar'],
+                                $item['unit'] ?? '-',
+                                $item['kelas'] ?? '-',
+                                $item['kelompok'] ?? '-',
+                            ),
+                        ], 422);
+                    }
+
                     if (!$existingCust) {
                         if (!empty($item['nis'])) {
                             $existingNis = scctcust::where('NOCUST', $item['nis'])->first();
@@ -322,12 +342,13 @@ class ExportImportDataController extends Controller
                             }
                         }
 
-                        scctcust::create($this->buildScctcustPayload($item));
+                        scctcust::create($this->buildScctcustPayload($item, false, null, $matchedKelas));
                     } else {
                         $existingCust->update($this->buildScctcustPayload(
                             $item,
                             true,
                             $existingCust,
+                            $matchedKelas,
                         ));
                     }
                 }
@@ -474,17 +495,83 @@ class ExportImportDataController extends Controller
         return $second !== '' ? $second : null;
     }
 
-    private function resolveSchoolCode(array $item): string
+    private function resolveSekolahForImport(?string $unit, ?mst_kelas $kelas): ?mst_sekolah
     {
-        return mb_substr(trim((string) ($item['unit'] ?? '')), 0, 5);
+        // Prioritas: kode sekolah dari mst_kelas.kelompok (angka, mis. 104/105)
+        $schoolCode = trim((string) ($kelas->kelompok ?? ''));
+        if ($schoolCode !== '' && preg_match('/^\d+$/', $schoolCode)) {
+            $byCode = mst_sekolah::query()->where('CODE01', $schoolCode)->first();
+            if ($byCode) {
+                return $byCode;
+            }
+        }
+
+        $unit = trim((string) $unit);
+        if ($unit !== '') {
+            $byUnit = mst_sekolah::query()
+                ->where(function ($query) use ($unit) {
+                    $query->where('DESC01', 'like', '%'.$unit.'%')
+                        ->orWhere('CODE01', $unit)
+                        ->orWhereRaw('UPPER(TRIM(DESC01)) = ?', [strtoupper($unit)]);
+                })
+                ->first();
+
+            if ($byUnit) {
+                return $byUnit;
+            }
+        }
+
+        if (!$kelas) {
+            return null;
+        }
+
+        $kelasUnit = trim((string) ($kelas->unit ?? ''));
+        if ($kelasUnit === '') {
+            return null;
+        }
+
+        return mst_sekolah::query()
+            ->where(function ($query) use ($kelasUnit) {
+                $query->where('DESC01', 'like', '%'.$kelasUnit.'%')
+                    ->orWhere('CODE01', $kelasUnit)
+                    ->orWhereRaw('UPPER(TRIM(DESC01)) = ?', [strtoupper($kelasUnit)]);
+            })
+            ->first();
     }
 
     private function buildScctcustPayload(
         array $item,
         bool $metodeByNodaftar = false,
         ?scctcust $existingCust = null,
+        ?mst_kelas $matchedKelas = null,
     ): array {
-        $code01 = $this->resolveSchoolCode($item);
+        $kelas = $matchedKelas ?? mst_kelas::findForImport(
+            $item['unit'] ?? null,
+            $item['kelas'] ?? null,
+            $item['kelompok'] ?? null,
+        );
+
+        if (!$kelas) {
+            throw new Exception(sprintf(
+                'Kelas tidak ditemukan di Master Kelas (Unit: %s, Kelas: %s, Kelompok: %s).',
+                $item['unit'] ?? '-',
+                $item['kelas'] ?? '-',
+                $item['kelompok'] ?? '-',
+            ));
+        }
+
+        $sekolah = $this->resolveSekolahForImport($item['unit'] ?? null, $kelas);
+
+        // CODE01 harus kode sekolah angka (104/105), bukan teks UNIT (SD)
+        $code01 = $sekolah?->CODE01
+            ?? (preg_match('/^\d+$/', trim((string) ($kelas->kelompok ?? ''))) ? trim((string) $kelas->kelompok) : null);
+
+        if ($code01 === null || $code01 === '') {
+            throw new Exception(sprintf(
+                'Kode sekolah (CODE01) tidak ditemukan untuk unit %s. Periksa Master Sekolah / kolom kelompok di Master Kelas.',
+                $item['unit'] ?? '-',
+            ));
+        }
 
         $payload = [
             'NOCUST' => $item['nis'] ?? '-',
@@ -492,10 +579,11 @@ class ExportImportDataController extends Controller
             'NUM2ND' => $item['nodaftar'] ?? '-',
             'STCUST' => 1,
             'CODE01' => $code01,
-            'DESC01' => $code01,
-            'CODE02' => $item['unit'] ?? null,
-            'DESC02' => $this->isBlankKelas($item['kelas'] ?? null) ? null : trim((string) $item['kelas']),
-            'DESC03' => $item['kelompok'] ?? null,
+            'DESC01' => $sekolah?->DESC01,
+            'CODE02' => $kelas->unit,
+            'DESC02' => $kelas->jenjang,
+            'CODE03' => $kelas->id,
+            'DESC03' => $kelas->kelas,
             'CODE04' => $item['gender'] ?? null,
             'DESC04' => $item['angkatan'] ?? null,
             'DESC05' => $item['alamat'] ?? null,
