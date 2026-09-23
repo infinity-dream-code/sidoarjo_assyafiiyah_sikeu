@@ -288,6 +288,9 @@ class ExportImportDataController extends Controller
                         $this->resolveOrtuForDb($item),
                     );
 
+                    // Procedure InputSiswa tidak mengisi DESC01 — lengkapi dari Master Sekolah
+                    $this->syncDesc01AfterInputSiswa($nis, $item['unit'] ?? null, $matchedKelas);
+
                     $saved++;
                 }
 
@@ -355,27 +358,56 @@ class ExportImportDataController extends Controller
             } elseif ($request->metode == '3') {
                 $rows = array_filter($data, fn ($item) => !empty($item['nis'] ?? null));
 
+                $saved = 0;
                 foreach ($rows as $item) {
-                    if ((int) ($item['status'] ?? 1) === 0) {
+                    $item = $this->normalizeImportItem($item);
+                    if (empty($item['nis']) || strlen((string) $item['nis']) > 15) {
                         continue;
                     }
                     if ($this->isBlankKelas($item['kelas'] ?? null)) {
                         continue;
                     }
-                    $item = $this->normalizeImportItem($item);
-                    if (strlen((string) ($item['nis'] ?? '')) > 10) {
+
+                    $existingCust = scctcust::where('NOCUST', $item['nis'])->first();
+                    if (!$existingCust) {
                         continue;
                     }
 
-                    $existingCust = scctcust::where('NOCUST', $item['nis'])->first();
+                    $kelas = mst_kelas::findForImport(
+                        $item['unit'] ?? null,
+                        $item['kelas'] ?? null,
+                        $item['kelompok'] ?? null,
+                    );
+                    if (!$kelas) {
+                        $connection->rollBack();
 
-                    if ($existingCust) {
-                        $existingCust->update([
-                            'CODE02' => $item['unit'] ?? null,
-                            'DESC02' => $item['kelas'] ?? null,
-                            'DESC03' => $item['kelompok'] ?? null,
-                        ]);
+                        return response()->json([
+                            'message' => sprintf(
+                                'Gagal update kelas NIS %s: kelas tidak ditemukan di Master Kelas (Unit: %s, Kelas: %s, Kelompok: %s).',
+                                $item['nis'],
+                                $item['unit'] ?? '-',
+                                $item['kelas'] ?? '-',
+                                $item['kelompok'] ?? '-',
+                            ),
+                        ], 422);
                     }
+
+                    $existingCust->update([
+                        'CODE02' => $kelas->unit,
+                        'DESC02' => $kelas->jenjang,
+                        'CODE03' => $kelas->id,
+                        'DESC03' => $kelas->kelas,
+                        'LastUpdate' => Carbon::now(),
+                    ]);
+                    $saved++;
+                }
+
+                if ($saved === 0) {
+                    $connection->rollBack();
+
+                    return response()->json([
+                        'message' => 'Tidak ada kelas yang diupdate. Pastikan NIS ada di database dan Unit/Kelas/Kelompok sesuai Master Kelas.',
+                    ], 422);
                 }
             } elseif ($request->metode == '4') {
                 $rows = array_filter($data, fn ($item) => !empty($item['nodaftar'] ?? null) && !empty($item['nis'] ?? null));
@@ -537,6 +569,36 @@ class ExportImportDataController extends Controller
                     ->orWhereRaw('UPPER(TRIM(DESC01)) = ?', [strtoupper($kelasUnit)]);
             })
             ->first();
+    }
+
+    /** Lengkapi DESC01 (+ CODE01 jika perlu) setelah CALL InputSiswa. */
+    private function syncDesc01AfterInputSiswa(string $nis, ?string $unit, mst_kelas $kelas): void
+    {
+        $sekolah = $this->resolveSekolahForImport($unit, $kelas);
+        if (!$sekolah) {
+            return;
+        }
+
+        $cust = scctcust::where('NOCUST', $nis)->first();
+        if (!$cust) {
+            return;
+        }
+
+        $updates = [];
+        $desc01 = trim((string) ($sekolah->DESC01 ?? ''));
+        if ($desc01 !== '' && trim((string) ($cust->DESC01 ?? '')) === '') {
+            $updates['DESC01'] = $desc01;
+        }
+
+        $code01 = trim((string) ($sekolah->CODE01 ?? ''));
+        if ($code01 !== '' && (trim((string) ($cust->CODE01 ?? '')) === '' || !preg_match('/^\d+$/', trim((string) ($cust->CODE01 ?? ''))))) {
+            $updates['CODE01'] = $code01;
+        }
+
+        if ($updates !== []) {
+            $updates['LastUpdate'] = Carbon::now();
+            $cust->update($updates);
+        }
     }
 
     private function buildScctcustPayload(
