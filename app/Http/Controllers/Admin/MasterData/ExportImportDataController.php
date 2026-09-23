@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin\MasterData;
 
 use App\Http\Controllers\Controller;
 use App\Imports\MasterData\ImportDataSiswa;
+use App\Models\mst_kelas;
 use App\Models\scctcust;
 use App\Models\ValidationMessage;
 use App\Support\InputSiswaProcedure;
@@ -251,18 +252,35 @@ class ExportImportDataController extends Controller
                 foreach ($rows as $item) {
                     $item = $this->normalizeImportItem($item);
                     $nis = (string) ($item['nis'] ?? '');
-                    $kelas = trim((string) ($item['kelas'] ?? ''));
-                    if ($nis === '' || $this->isBlankKelas($kelas)) {
+                    $kelasText = trim((string) ($item['kelas'] ?? ''));
+                    if ($nis === '' || $this->isBlankKelas($kelasText)) {
                         continue;
+                    }
+
+                    $matchedKelas = mst_kelas::findForImport(
+                        $item['unit'] ?? null,
+                        $item['kelas'] ?? null,
+                        $item['kelompok'] ?? null,
+                    );
+                    if (!$matchedKelas) {
+                        return response()->json([
+                            'message' => sprintf(
+                                'Kelas tidak ditemukan di Master Kelas untuk NIS %s (Unit: %s, Kelas: %s, Kelompok: %s). Tambahkan dulu di menu Master Kelas (mis. unit MTS).',
+                                $nis,
+                                $item['unit'] ?? '-',
+                                $item['kelas'] ?? '-',
+                                $item['kelompok'] ?? '-',
+                            ),
+                        ], 422);
                     }
 
                     InputSiswaProcedure::call(
                         $nis,
                         (string) ($item['nama'] ?? ''),
-                        $kelas,
-                        (string) ($item['unit'] ?? ''),
-                        (string) ($item['unit'] ?? ''),
-                        (string) ($item['kelompok'] ?? ''),
+                        (string) ($matchedKelas->jenjang ?? $kelasText),
+                        (string) ($matchedKelas->unit ?? ($item['unit'] ?? '')),
+                        (string) ($matchedKelas->kelompok ?? ''),
+                        (string) ($matchedKelas->kelas ?? ($item['kelompok'] ?? '')),
                         (string) ($item['angkatan'] ?? ''),
                         $item['alamat'] ?? null,
                         $item['gender'] ?? null,
