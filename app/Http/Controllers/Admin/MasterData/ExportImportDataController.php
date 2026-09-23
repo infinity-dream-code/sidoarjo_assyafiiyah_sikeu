@@ -306,29 +306,46 @@ class ExportImportDataController extends Controller
                     $item = $this->normalizeImportItem($item);
                     $lookupKey = $item['nodaftar'] ?? '';
 
-                    if (strlen($lookupKey) > 10) {
+                    if ($lookupKey === '' || strlen($lookupKey) > 10) {
                         continue;
                     }
 
                     $existingCust = scctcust::where('NUM2ND', $item['nodaftar'])->first();
 
+                    // Konversi NIS → nodaftar: nilai dipindah ke kolom nodaftar,
+                    // record lama masih punya NOCUST = nilai itu dan NUM2ND kosong.
+                    if (!$existingCust) {
+                        $byFormerNis = scctcust::where('NOCUST', $item['nodaftar'])->first();
+                        if ($byFormerNis && $this->isBlankCustId($byFormerNis->NUM2ND)) {
+                            $payload = $this->buildScctcustPayload($item, true, $byFormerNis);
+                            $payload['NUM2ND'] = $item['nodaftar'];
+                            $payload['NOCUST'] = !empty($item['nis']) ? (string) $item['nis'] : '-';
+                            $byFormerNis->update($payload);
+                            continue;
+                        }
+                    }
+
                     if (!$existingCust) {
                         if (!empty($item['nis'])) {
                             $existingNis = scctcust::where('NOCUST', $item['nis'])->first();
                             if ($existingNis) {
-                                $connection->rollBack();
-
-                                return response()->json(['message' => 'Gagal, siswa dengan NIK :' . $item['nis'] . ' sudah ada!'], 422);
+                                // Siswa sudah ada by NIS — isi/update nomor daftar, jangan create duplikat
+                                $payload = $this->buildScctcustPayload($item, true, $existingNis);
+                                $payload['NOCUST'] = $existingNis->NOCUST;
+                                $payload['NUM2ND'] = $item['nodaftar'];
+                                $existingNis->update($payload);
+                                continue;
                             }
                         }
 
                         scctcust::create($this->buildScctcustPayload($item));
                     } else {
-                        $existingCust->update($this->buildScctcustPayload(
-                            $item,
-                            true,
-                            $existingCust,
-                        ));
+                        $payload = $this->buildScctcustPayload($item, true, $existingCust);
+                        // Izinkan kosongkan NIS saat simpan by nodaftar (konversi penuh)
+                        if (array_key_exists('nis', $item) && ($item['nis'] === null || $item['nis'] === '')) {
+                            $payload['NOCUST'] = '-';
+                        }
+                        $existingCust->update($payload);
                     }
                 }
             } elseif ($request->metode == '3') {
@@ -379,7 +396,7 @@ class ExportImportDataController extends Controller
                     }
 
                     $existingCust = scctcust::where('NUM2ND', $item['nodaftar'])->first();
-                    if ($existingCust && in_array(trim((string) $existingCust->NOCUST), ['', '-'], true)) {
+                    if ($existingCust && $this->isBlankCustId($existingCust->NOCUST)) {
                         $existingCust->update([
                             'NOCUST' => $item['nis'],
                         ]);
@@ -456,6 +473,17 @@ class ExportImportDataController extends Controller
             || $text === 'none'
             || $text === '0'
             || $text === '0.0';
+    }
+
+    private function isBlankCustId(mixed $value): bool
+    {
+        if ($value === null || $value === false) {
+            return true;
+        }
+
+        $text = trim((string) $value);
+
+        return $text === '' || $text === '-';
     }
 
     /** Nama ortu/wali utama (kolom ortu / genus / ayah di Excel). */
