@@ -356,19 +356,33 @@ class ExportImportDataController extends Controller
                     }
                 }
             } elseif ($request->metode == '3') {
-                $rows = array_filter($data, fn ($item) => !empty($item['nis'] ?? null));
+                // Bisa by NIS atau Nomor Pendaftaran (siswa PMB sering belum punya NIS)
+                $rows = array_filter($data, function ($item) {
+                    $item = $this->normalizeImportItem(is_array($item) ? $item : []);
+
+                    return !empty($item['nis']) || !empty($item['nodaftar']);
+                });
 
                 $saved = 0;
                 foreach ($rows as $item) {
                     $item = $this->normalizeImportItem($item);
-                    if (empty($item['nis']) || strlen((string) $item['nis']) > 15) {
-                        continue;
-                    }
                     if ($this->isBlankKelas($item['kelas'] ?? null)) {
                         continue;
                     }
 
-                    $existingCust = scctcust::where('NOCUST', $item['nis'])->first();
+                    $existingCust = null;
+                    $identityLabel = '';
+
+                    if (!empty($item['nis']) && strlen((string) $item['nis']) <= 15) {
+                        $existingCust = scctcust::where('NOCUST', $item['nis'])->first();
+                        $identityLabel = 'NIS '.$item['nis'];
+                    }
+
+                    if (!$existingCust && !empty($item['nodaftar']) && strlen((string) $item['nodaftar']) <= 15) {
+                        $existingCust = scctcust::where('NUM2ND', $item['nodaftar'])->first();
+                        $identityLabel = 'No Pendaftaran '.$item['nodaftar'];
+                    }
+
                     if (!$existingCust) {
                         continue;
                     }
@@ -383,8 +397,8 @@ class ExportImportDataController extends Controller
 
                         return response()->json([
                             'message' => sprintf(
-                                'Gagal update kelas NIS %s: kelas tidak ditemukan di Master Kelas (Unit: %s, Kelas: %s, Kelompok: %s).',
-                                $item['nis'],
+                                'Gagal update kelas %s: kelas tidak ditemukan di Master Kelas (Unit: %s, Kelas: %s, Kelompok: %s).',
+                                $identityLabel,
                                 $item['unit'] ?? '-',
                                 $item['kelas'] ?? '-',
                                 $item['kelompok'] ?? '-',
@@ -406,7 +420,7 @@ class ExportImportDataController extends Controller
                     $connection->rollBack();
 
                     return response()->json([
-                        'message' => 'Tidak ada kelas yang diupdate. Pastikan NIS ada di database dan Unit/Kelas/Kelompok sesuai Master Kelas.',
+                        'message' => 'Tidak ada kelas yang diupdate. Pastikan NIS atau Nomor Pendaftaran ada di database, dan Unit/Kelas/Kelompok sesuai Master Kelas (contoh SD / 1 / A).',
                     ], 422);
                 }
             } elseif ($request->metode == '4') {
