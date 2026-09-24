@@ -347,8 +347,9 @@ class ManualPembayaranController extends Controller
         $message = 'Tagihan sukses dibayar. <br> Total Bayar : Rp. ' . number_format($totalBayar, 0, ',', '.') . '.<br> Apakah anda ingin mencetak pembayaran tagihan?';
 
         $dateInput = $request->input('tanggal');
-        $datetime = Carbon::createFromFormat('d-m-Y', $dateInput)
-            ->setTimeFrom(Carbon::now());
+        // PAIDDT pakai tanggal yang dipilih user, jam tetap 12:00 siang.
+        // PAIDDT_ACTUAL diisi now() setelah function DB di ManualPaymentBuilder.
+        $datetime = Carbon::createFromFormat('d-m-Y', $dateInput)->setTime(12, 0, 0);
         $formattedDate = $datetime->toDateTimeString();
         try {
             DB::beginTransaction();

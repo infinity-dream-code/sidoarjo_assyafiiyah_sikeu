@@ -29,18 +29,42 @@ class ManualPaymentBuilder
 
         if ($fidBank === self::SALDO_FIDBANK) {
             $this->callBuilderPaymentBill($aa, $nominal);
-            return;
+        } else {
+            $this->callBuilderPaymentCash(
+                $custId,
+                $fidBank,
+                $userId,
+                $this->formatPaymentDate($paidAt),
+                $billCd,
+                $aa,
+                $nominal
+            );
         }
 
-        $this->callBuilderPaymentCash(
-            $custId,
-            $fidBank,
-            $userId,
-            $this->formatPaymentDate($paidAt),
-            $billCd,
-            $aa,
-            $nominal
-        );
+        // Function DB tetap pakai tanggal setting; setelah OK override PAIDDT (jam 12:00)
+        // dan catat waktu aktual input di PAIDDT_ACTUAL.
+        $this->applyPaidDates($aa, $paidAt);
+    }
+
+    /**
+     * PAIDDT = tanggal bayar yang di-set user, jam selalu 12:00:00.
+     * PAIDDT_ACTUAL = waktu sekarang saat pembayaran diinput.
+     */
+    private function applyPaidDates(string $aa, string $paidAt): void
+    {
+        $paidDt = Carbon::parse($paidAt)->setTime(12, 0, 0)->toDateTimeString();
+        $paidDtActual = Carbon::now()->toDateTimeString();
+
+        scctbill::where('AA', $aa)->update([
+            'PAIDDT' => $paidDt,
+            'PAIDDT_ACTUAL' => $paidDtActual,
+        ]);
+
+        Log::info('manual-payment.builder.paid_dates', [
+            'aa' => $aa,
+            'paiddt' => $paidDt,
+            'paiddt_actual' => $paidDtActual,
+        ]);
     }
 
     /**
