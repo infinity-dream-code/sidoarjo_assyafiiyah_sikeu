@@ -699,25 +699,36 @@ class DataTagihanController extends Controller
         $rowperpage = $rowperpage == "poll" ? $totalRecords : $rowperpage;
         $recordsQuery = clone $query;
 
-        if ($userOrdered) {
+        // Selalu kelompokkan by NIS ASC dulu (angka), NOCUST kosong/- di belakang
+        $recordsQuery
+            ->orderByRaw("
+                CASE
+                    WHEN scctcust.nocust IS NULL
+                        OR TRIM(scctcust.nocust) = ''
+                        OR TRIM(scctcust.nocust) = '-'
+                    THEN 1 ELSE 0
+                END ASC
+            ")
+            ->orderByRaw("CAST(NULLIF(NULLIF(TRIM(scctcust.nocust), ''), '-') AS UNSIGNED) ASC")
+            ->orderBy('scctcust.nocust', 'asc')
+            ->orderBy('scctcust.NUM2ND', 'asc');
+
+        if ($userOrdered && $columnName !== 'scctcust.nocust') {
             $dir = $columnSortOrder === 'desc' ? 'DESC' : 'ASC';
             if ($columnName === 'scctbill.FUrutan') {
-                $recordsQuery->orderByRaw('CAST(COALESCE(scctbill.FUrutan, 0) AS SIGNED) ' . $dir);
+                $recordsQuery->orderByRaw('CAST(COALESCE(scctbill.FUrutan, 0) AS SIGNED) '.$dir);
             } elseif ($columnName === 'scctbill.BILLAM') {
-                $recordsQuery->orderByRaw('CAST(COALESCE(scctbill.BILLAM, 0) AS DECIMAL(18,2)) ' . $dir);
+                $recordsQuery->orderByRaw('CAST(COALESCE(scctbill.BILLAM, 0) AS DECIMAL(18,2)) '.$dir);
             } elseif ($columnName === 'scctbill.PAYMENTLEFT') {
-                $recordsQuery->orderByRaw('CAST(COALESCE(scctbill.PAYMENTLEFT, 0) AS DECIMAL(18,2)) ' . $dir);
+                $recordsQuery->orderByRaw('CAST(COALESCE(scctbill.PAYMENTLEFT, 0) AS DECIMAL(18,2)) '.$dir);
             } elseif ($columnName === 'scctbill.BILLPAID') {
-                $recordsQuery->orderByRaw('CAST(COALESCE(scctbill.BILLPAID, 0) AS DECIMAL(18,2)) ' . $dir);
+                $recordsQuery->orderByRaw('CAST(COALESCE(scctbill.BILLPAID, 0) AS DECIMAL(18,2)) '.$dir);
             } else {
                 $recordsQuery->orderBy($columnName, $columnSortOrder);
             }
-            $recordsQuery
-                ->orderBy('scctcust.nocust', 'asc')
-                ->orderBy('scctbill.AA', 'asc');
+            $recordsQuery->orderBy('scctbill.AA', 'asc');
         } else {
             $recordsQuery
-                ->orderBy('scctcust.nocust', 'asc')
                 ->orderBy('scctbill.BILLAC')
                 ->orderByRaw("
                     CASE
