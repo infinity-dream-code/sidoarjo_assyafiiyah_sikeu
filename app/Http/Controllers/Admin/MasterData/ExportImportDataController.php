@@ -165,18 +165,25 @@ class ExportImportDataController extends Controller
             $hasNik = in_array('nik', $headings, true) || in_array('nis', $headings, true);
             $hasNodaftar = in_array('nodaftar', $headings, true);
 
-            if (!$hasNik && !$hasNodaftar) {
-                $missingColumns[] = 'NIK / NODAFTAR';
+            // Template wajib punya kedua kolom NIS dan NODAFTAR (isi salah satu atau keduanya)
+            if (!$hasNik) {
+                $missingColumns[] = 'NIS';
             }
-            foreach ($requiredColumns as $column) if (!in_array($column, $headings, true)) $missingColumns[] = $column;
+            if (!$hasNodaftar) {
+                $missingColumns[] = 'NODAFTAR';
+            }
+            foreach ($requiredColumns as $column) {
+                if (!in_array($column, $headings, true)) {
+                    $missingColumns[] = $column;
+                }
+            }
 
             if (!empty($missingColumns)) {
                 $formattedMissingColumns = strtoupper(str_replace('_', ' ', implode(', ', $missingColumns)));
-                $formattedRequiredColumns = 'NIS, NAMA, UNIT, KELAS, KELOMPOK, ANGKATAN';
                 throw new Exception (
-                    "Kolom $formattedMissingColumns tidak ditemukan.<br><hr>
-                               pastikan kolom berikut ada dan terisi pada file import yang akan diproses: $formattedRequiredColumns. <br>
-                               Catatan: NIS atau NODAFTAR wajib salah satu terisi. Format sama dengan Buat Tagihan Excel; bedanya tagihan ada tambahan NOMINAL."
+                    "Kolom {$formattedMissingColumns} tidak ditemukan.<br><hr>".
+                    'pastikan kolom berikut ada: <b>NIS, NODAFTAR, NAMA, UNIT, KELAS, KELOMPOK, ANGKATAN</b>.<br>'.
+                    'Isi <b>NIS</b> saja, <b>NODAFTAR</b> saja, atau keduanya (boleh nilai sama). Saat Simpan Data pilih metode NIS atau Nomor Pendaftaran.'
                 );
             }
 
@@ -246,7 +253,9 @@ class ExportImportDataController extends Controller
                     return !empty($item['nis'] ?? null) && !$this->isBlankKelas($item['kelas'] ?? null);
                 });
                 if (empty($rows)) {
-                    return response()->json(['message' => 'Tidak ada baris dengan NIK dan KELAS yang dapat disimpan'], 422);
+                    return response()->json([
+                        'message' => 'Tidak ada baris dengan NIS yang dapat disimpan. Untuk siswa hanya NODAFTAR, pilih metode "SIMPAN dengan Nomor Pendaftaran".',
+                    ], 422);
                 }
 
                 $saved = 0;
@@ -291,6 +300,15 @@ class ExportImportDataController extends Controller
                     // Procedure InputSiswa tidak mengisi DESC01 — lengkapi dari Master Sekolah
                     $this->syncDesc01AfterInputSiswa($nis, $item['unit'] ?? null, $matchedKelas);
 
+                    // Jika kolom NODAFTAR terisi, simpan juga ke NUM2ND (boleh sama dengan NIS)
+                    $nodaftar = trim((string) ($item['nodaftar'] ?? ''));
+                    if ($nodaftar !== '' && $nodaftar !== '-') {
+                        scctcust::where('NOCUST', $nis)->update([
+                            'NUM2ND' => $nodaftar,
+                            'LastUpdate' => Carbon::now(),
+                        ]);
+                    }
+
                     $saved++;
                 }
 
@@ -299,6 +317,13 @@ class ExportImportDataController extends Controller
                 }
             } elseif ($request->metode == '2') {
                 $rows = array_filter($data, fn ($item) => !empty($item['nodaftar'] ?? null));
+                if (empty($rows)) {
+                    $connection->rollBack();
+
+                    return response()->json([
+                        'message' => 'Tidak ada baris dengan NODAFTAR yang dapat disimpan. Untuk siswa hanya NIS, pilih metode "SIMPAN dengan NIS".',
+                    ], 422);
+                }
 
                 foreach ($rows as $item) {
                     if ((int) ($item['status'] ?? 1) === 0) {
@@ -341,18 +366,21 @@ class ExportImportDataController extends Controller
                             if ($existingNis) {
                                 $connection->rollBack();
 
-                                return response()->json(['message' => 'Gagal, siswa dengan NIK :' . $item['nis'] . ' sudah ada!'], 422);
+                                return response()->json([
+                                    'message' => 'Gagal, siswa dengan NIS :'.$item['nis'].' sudah ada! Simpan dengan NIS tidak bisa diubah jadi Nomor Pendaftaran. Gunakan metode SIMPAN dengan NIS, atau UPGRADE jika ingin dari nodaftar ke NIS.',
+                                ], 422);
                             }
                         }
 
-                        scctcust::create($this->buildScctcustPayload($item, false, null, $matchedKelas));
+                        // Simpan sebagai nodaftar: NOCUST tetap '-' meski kolom NIS terisi (boleh nilai sama)
+                        $createItem = $item;
+                        $createItem['nis'] = null;
+                        scctcust::create($this->buildScctcustPayload($createItem, false, null, $matchedKelas));
                     } else {
-                        $existingCust->update($this->buildScctcustPayload(
-                            $item,
-                            true,
-                            $existingCust,
-                            $matchedKelas,
-                        ));
+                        $payload = $this->buildScctcustPayload($item, true, $existingCust, $matchedKelas);
+                        $payload['NOCUST'] = '-';
+                        $payload['NUM2ND'] = $existingCust->NUM2ND;
+                        $existingCust->update($payload);
                     }
                 }
             } elseif ($request->metode == '3') {

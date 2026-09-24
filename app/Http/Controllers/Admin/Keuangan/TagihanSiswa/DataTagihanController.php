@@ -717,6 +717,7 @@ class DataTagihanController extends Controller
                 ->orderBy('scctbill.AA', 'asc');
         } else {
             $recordsQuery
+                ->orderBy('scctcust.nocust', 'asc')
                 ->orderBy('scctbill.BILLAC')
                 ->orderByRaw("
                     CASE
@@ -736,7 +737,7 @@ class DataTagihanController extends Controller
                     END
                 ")
                 ->orderByRaw('CAST(COALESCE(scctbill.FUrutan, 0) AS SIGNED) ASC')
-                ->orderBy('scctcust.nocust', 'asc');
+                ->orderBy('scctbill.AA', 'asc');
         }
 
         $rows = $recordsQuery

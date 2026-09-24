@@ -102,12 +102,15 @@
                         <ul class="list-group list-group-timeline mb-3">
                             <li class="list-group-item list-group-timeline-danger">File harus berformat <span class="fw-bold">XLS/XLSX</span>.</li>
                             <li class="list-group-item list-group-timeline-danger">Ukuran file tidak boleh lebih dari <span class="fw-bold">1024KB/1MB</span>.</li>
-                            <li class="list-group-item list-group-timeline-danger">Kolom wajib: <span class="fw-bold">NIS, Nama, Unit, Kelas, Kelompok, Angkatan</span> (atau NODAFTAR menggantikan NIS untuk siswa baru).</li>
-                            <li class="list-group-item list-group-timeline-danger">UPGRADE Nomor Pendaftaran ke NIS: Excel wajib isi <span class="fw-bold">NODAFTAR</span> (lama) dan <span class="fw-bold">NIS</span> (baru) di baris yang sama.</li>
-                            <li class="list-group-item list-group-timeline-danger">Kolom opsional: <span class="fw-bold">Gender, Alamat, Ortu, Nominal</span> (bukan Ayah/Ibu). Kolom Nominal diabaikan di sini, dipakai jika file yang sama diimport di Buat Tagihan Excel.</li>
+                            <li class="list-group-item list-group-timeline-danger">Kolom identitas: <span class="fw-bold">NIS</span> dan <span class="fw-bold">NODAFTAR</span> (keduanya harus ada di header Excel).</li>
+                            <li class="list-group-item list-group-timeline-danger">Isi boleh: NIS saja, NODAFTAR saja, atau keduanya (nilai boleh sama). Saat <span class="fw-bold">Simpan Data</span> pilih metode NIS atau Nomor Pendaftaran.</li>
+                            <li class="list-group-item list-group-timeline-danger">Simpan dengan NIS: identitas tetap NIS (tidak bisa diubah jadi nodaftar). Simpan dengan Nomor Pendaftaran: terbatas (belum bisa fitur seperti reset login), nanti bisa <span class="fw-bold">UPGRADE</span> ke NIS.</li>
+                            <li class="list-group-item list-group-timeline-danger">Kolom lain wajib: <span class="fw-bold">Nama, Unit, Kelas, Kelompok, Angkatan</span>.</li>
+                            <li class="list-group-item list-group-timeline-danger">UPGRADE Nomor Pendaftaran ke NIS: isi <span class="fw-bold">NODAFTAR</span> (lama) dan <span class="fw-bold">NIS</span> (baru) di baris yang sama.</li>
+                            <li class="list-group-item list-group-timeline-danger">Kolom opsional: <span class="fw-bold">Gender, Alamat, Ortu, Nominal</span>. Nominal diabaikan di sini (dipakai di Buat Tagihan Excel).</li>
                             <li class="list-group-item list-group-timeline-danger">Contoh file yang dapat diproses untuk import:
                                 <a class="btn btn-sm btn-outline-primary fw-bolder"
-                                   href="{{asset('TEMPLATE MENU UPLOAD DATA SISWA.xlsx')}}?v=20260923-syukro"
+                                   href="{{asset('TEMPLATE MENU UPLOAD DATA SISWA.xlsx')}}?v=20260924-nis-nodaftar"
                                    download>
                                     <i class="ri ri-file-excel-line me-2"></i>Contoh File
                                 </a>

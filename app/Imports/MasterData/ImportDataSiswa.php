@@ -84,7 +84,12 @@ class ImportDataSiswa implements WithMultipleSheets, ToCollection, WithHeadingRo
 
             if (!$rowData['nis'] && !$rowData['nodaftar']) {
                 $rowData['status'] = 0;
-                $statusKet = 'NIS atau Nomor Pendaftaran wajib diisi';
+                $statusKet = 'NIS atau Nomor Pendaftaran wajib diisi (salah satu, atau keduanya)';
+            } elseif ($rowData['nis'] && $rowData['nodaftar'] && $rowData['nis'] === $rowData['nodaftar']) {
+                $statusKet = $this->appendKet(
+                    $statusKet,
+                    'NIS dan NODAFTAR sama — saat Simpan pilih metode NIS atau Nomor Pendaftaran'
+                );
             }
 
             foreach ($requiredKeys as $column) {
