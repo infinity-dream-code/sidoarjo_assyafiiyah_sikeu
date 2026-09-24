@@ -33,8 +33,8 @@ class DataPenerimaanController extends Controller
     private string $mainTitle = 'Data Pembayaran';
     private string $cacheKey = 'data penerimaan';
     private array $allowedFilters = [
-        'dari_tanggal' => 'sccttran.TRXDATE_start',
-        'sampai_tanggal' => 'sccttran.TRXDATE_end',
+        'dari_tanggal' => 'scctbill.PAIDDT_start',
+        'sampai_tanggal' => 'scctbill.PAIDDT_end',
         'tahun_akademik' => 'scctbill.BTA',
         'post' => 'scctbill.BILLNM',
         'kelas' => 'scctcust.DESC02',
@@ -163,7 +163,7 @@ class DataPenerimaanController extends Controller
         $search_arr = $request->get('search', []);
         $searchValue = $search_arr['value'] ?? '';
 
-        $columnName = 'sccttran.TRXDATE';
+        $columnName = 'scctbill.PAIDDT';
         $columnSortOrder = 'desc';
 
         if (!empty($order_arr)) {
@@ -192,16 +192,18 @@ class DataPenerimaanController extends Controller
         if ($filter) {
             foreach ($filter as $key => $val) {
                 switch ($key) {
+                    case 'scctbill.PAIDDT_start':
                     case 'sccttran.TRXDATE_start':
                         $date = Carbon::createFromFormat('d-m-Y', $val)->startOfDay();
                         if ($date) {
-                            $filters[] = ['sccttran.TRXDATE', '>=', $date];
+                            $filters[] = ['scctbill.PAIDDT', '>=', $date];
                         }
                         break;
+                    case 'scctbill.PAIDDT_end':
                     case 'sccttran.TRXDATE_end':
                         $date = Carbon::createFromFormat('d-m-Y', $val)->endOfDay();
                         if ($date) {
-                            $filters[] = ['sccttran.TRXDATE', '<=', $date];
+                            $filters[] = ['scctbill.PAIDDT', '<=', $date];
                         }
                         break;
                     case 'scctbill.BILLAC_start':
@@ -314,6 +316,7 @@ class DataPenerimaanController extends Controller
             'scctbill.BILLPAID',
             'scctbill.BILLAC',
             'scctbill.PAIDST',
+            'scctbill.PAIDDT',
             'scctbill.BTA',
             DB::raw('NULL as GENUS1'),
         ];
@@ -380,7 +383,8 @@ class DataPenerimaanController extends Controller
                 $item->TRAN_URUT = $item->urut;
                 $item->BILLNM = $billName;
                 $item->BILLAM = $nominalBayar;
-                $item->PAIDDT = $item->TRXDATE;
+                // Tanggal Bayar tampilkan PAIDDT (bukan TRXDATE / PAIDDT_ACTUAL)
+                $item->PAIDDT = $item->PAIDDT ?: $item->TRXDATE;
                 // Metode dari scctbill: NOREFF Mobile → ANDROID, selain itu FIDBANK bill
                 $item->FIDBANK = MetodeBayarHelper::resolveDisplayFidBank(
                     $item->BILL_FIDBANK ?? $item->FIDBANK ?? null,
@@ -433,22 +437,13 @@ class DataPenerimaanController extends Controller
         $logs = $this->getTransactionLogsForBill($custId, $id, $billTransNo, $billName);
 
         if (empty($logs)) {
+            $billPaidDt = scctbill::query()->where('AA', $id)->value('PAIDDT');
             $logs = sccttran::query()
                 ->where('BILLID', $id)
                 ->orderBy('TRXDATE', 'desc')
                 ->get(['TRXDATE', 'METODE', 'DEBET', 'KREDIT', 'FIDBANK', 'NOREFF', 'TRANSNO'])
-                ->map(function ($trx) {
-                    return [
-                        'trxdate' => $trx->TRXDATE
-                            ? Carbon::parse($trx->TRXDATE)->format('d-m-Y H:i:s')
-                            : null,
-                        'metode' => $trx->METODE,
-                        'debet' => (int) ($trx->DEBET ?? 0),
-                        'kredit' => (int) ($trx->KREDIT ?? 0),
-                        'fidbank' => $trx->FIDBANK,
-                        'noreff' => $trx->NOREFF,
-                        'transno' => $trx->TRANSNO,
-                    ];
+                ->map(function ($trx) use ($billPaidDt) {
+                    return $this->mapTransactionLogRow($trx, $billPaidDt);
                 })
                 ->values()
                 ->all();
@@ -506,6 +501,8 @@ class DataPenerimaanController extends Controller
         }
 
         try {
+            $billPaidDt = scctbill::query()->where('AA', $aa)->value('PAIDDT');
+
             $primaryLogs = sccttran::query()
                 ->where('BILLID', $aa)
                 ->orderBy('TRXDATE', 'desc')
@@ -530,24 +527,40 @@ class DataPenerimaanController extends Controller
             }
 
             return $logsCollection
-                ->map(function ($trx) {
-                    return [
-                        'trxdate' => $trx->TRXDATE
-                            ? Carbon::parse($trx->TRXDATE)->format('d-m-Y H:i:s')
-                            : null,
-                        'metode' => $trx->METODE,
-                        'debet' => (int) ($trx->DEBET ?? 0),
-                        'kredit' => (int) ($trx->KREDIT ?? 0),
-                        'fidbank' => $trx->FIDBANK,
-                        'noreff' => $trx->NOREFF,
-                        'transno' => $trx->TRANSNO,
-                    ];
+                ->map(function ($trx) use ($billPaidDt) {
+                    return $this->mapTransactionLogRow($trx, $billPaidDt);
                 })
                 ->values()
                 ->all();
         } catch (\Throwable $e) {
             return [];
         }
+    }
+
+    /**
+     * Tanggal di riwayat transaksi / Tanggal Bayar: pakai scctbill.PAIDDT
+     * (bukan TRXDATE / PAIDDT_ACTUAL).
+     */
+    private function mapTransactionLogRow($trx, $billPaidDt = null): array
+    {
+        $displayDate = null;
+        if (!blank($billPaidDt) && $billPaidDt !== '0000-00-00 00:00:00') {
+            $displayDate = $billPaidDt;
+        } elseif (!blank($trx->TRXDATE)) {
+            $displayDate = $trx->TRXDATE;
+        }
+
+        return [
+            'trxdate' => $displayDate
+                ? Carbon::parse($displayDate)->format('d-m-Y H:i:s')
+                : null,
+            'metode' => $trx->METODE,
+            'debet' => (int) ($trx->DEBET ?? 0),
+            'kredit' => (int) ($trx->KREDIT ?? 0),
+            'fidbank' => $trx->FIDBANK,
+            'noreff' => $trx->NOREFF,
+            'transno' => $trx->TRANSNO,
+        ];
     }
 
     public function total(): int
@@ -599,7 +612,7 @@ class DataPenerimaanController extends Controller
             'BILLNM' => 'scctbill.BILLNM',
             'BILLAM' => 'sccttran.DEBET',
             'FIDBANK' => 'sccttran.FIDBANK',
-            'PAIDDT' => 'sccttran.TRXDATE',
+            'PAIDDT' => 'scctbill.PAIDDT',
             'BTA' => 'scctbill.BTA',
             default => str_contains($column, '.') ? $column : 'sccttran.' . $column,
         };
