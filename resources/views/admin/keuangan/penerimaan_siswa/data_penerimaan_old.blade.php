@@ -591,11 +591,11 @@
         });
 
         const instansi = {
-            nama_instansi: "{{ config('app.nama_instansi') }}",
+            nama_instansi: @json(config('app.nama_instansi') ?? ''),
             nama_sub_1: "{{ config('app.nama_sub_instansi_1') }}",
             nama_sub_2: "{{ config('app.nama_sub_instansi_2') }}",
             akreditasi: "{{ config('app.akreditasi') }}",
-            alamat: "{{ config('app.alamat') }}",
+            alamat: @json(config('app.alamat')),
             kontak: {
                 telepon: "{{ config('app.telepon') }}",
                 email: "{{ config('app.email') }}",
@@ -605,8 +605,8 @@
         const headerLogo = "{{ base64_encode(file_get_contents(public_path(config('app.logo')))) }}";
         const tandaTangan = "{{ Auth::user()->tanda_tangan ? base64_encode(file_get_contents(public_path('storage/photos/tanda_tangan/'.Auth::user()->tanda_tangan))) : '' }}";
         const userName = "{{ Auth::user()->name }}";
-        const domisili = "{{ config('app.domisili') }}";
-        const tanggalSekarang = "{{ \Carbon\Carbon::now()->isoFormat('dddd, D MMMM YYYY') }}";
+        const domisili = @json(config('app.domisili'));
+        const tanggalSekarang = "{{ \Carbon\Carbon::now()->locale('id')->isoFormat('dddd, D MMMM YYYY') }}";
 
         document.getElementById('download-pdf').addEventListener('click', function (e) {
             e.preventDefault();
@@ -748,12 +748,8 @@
 
                     post.tagihans.forEach((item, index) => {
                         const dateObj = new Date(item.PAIDDT);
-                        const formattedDate = dateObj.toLocaleDateString('id-ID', {
-                            weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
-                        });
-                        const formattedTime = dateObj.toLocaleTimeString('id-ID', {
-                            hour: '2-digit', minute: '2-digit'
-                        });
+                        const formattedDate = formatTanggalIndonesia(dateObj);
+                        const formattedTime = formatTanggalIndonesia(dateObj, { withTime: true }).split(' ').slice(-1)[0] || '';
 
                         // Check if NIS is same as previous row
                         let nisCell = item.nocust;

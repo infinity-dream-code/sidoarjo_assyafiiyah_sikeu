@@ -145,7 +145,7 @@
                     <div class="navbar-nav align-items-center d-xs-none">
                         <span class="d-none d-md-inline-block">
                             <span>{{config('app.name')}} - </span>
-                            <span>{{ Carbon::now()->locale('id_ID')->translatedFormat('l, d F Y') }} - </span>
+                            <span>{{ Carbon::now()->locale('id')->translatedFormat('l, d F Y') }} - </span>
                             <span id="clock"></span>
                         </span>
                     </div>
@@ -405,8 +405,9 @@
 {{--            integrity="sha256-ozFG+tjHIo3E3JAEPj5Q1Rzq2LImeurDKwqPO+ilK4Y=" crossorigin="anonymous" defer></script>--}}
 {{--    <script src="https://cdn.jsdelivr.net/npm/datatables.net-bs5@1.13.11/js/dataTables.bootstrap5.min.js"--}}
 {{--            integrity="sha256-3iXHrfSd4xzI1YyrooF0jG4OVwGiSAoU1+WdYwEwYZk=" crossorigin="anonymous" defer></script>--}}
+    <script src="{{ asset('js/formatTanggalIndonesia.js') }}?v=20260924-id2"></script>
     <script src="{{asset('main/libs/datatables-bs5/datatables-bootstrap5.js')}}"></script>
-    <script src="{{asset('js/datatableCustom/Datatable-0-4.js')}}?v=20260922-auth2" defer></script>
+    <script src="{{asset('js/datatableCustom/Datatable-0-4.js')}}?v=20260924-id2" defer></script>
 
 {{--    @hasSection('datatable-responsive')--}}
 {{--        <script src="https://cdn.jsdelivr.net/npm/datatables.net-responsive@2.5.1/js/dataTables.responsive.min.js"--}}
@@ -504,6 +505,7 @@
         });
     </script>
 @endif
+<script src="{{ asset('js/formatTanggalIndonesia.js') }}?v=20260924-id2"></script>
 @yield('script')
 <script src="{{ asset('js/session-keepalive.js') }}?v=20260922-auth2"></script>
 </body>

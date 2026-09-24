@@ -885,11 +885,11 @@
             });
 
             const instansi = {
-                nama_instansi: "{{ config('app.nama_instansi') }}",
+                nama_instansi: @json(config('app.nama_instansi') ?? ''),
                 nama_sub_1: "{{ config('app.nama_sub_instansi_1') }}",
                 nama_sub_2: "{{ config('app.nama_sub_instansi_2') }}",
                 akreditasi: "{{ config('app.akreditasi') }}",
-                alamat: "{{ config('app.alamat') }}",
+                alamat: @json(config('app.alamat')),
                 kontak: {
                     telepon: "{{ config('app.telepon') }}",
                     email: "{{ config('app.email') }}",
@@ -899,8 +899,8 @@
             const headerLogo = "{{ base64_encode(file_get_contents(public_path(config('app.logo')))) }}";
             const tandaTangan = @json($tanda_tangan);
             const userName = "{{ Auth::user()->name }}";
-            const domisili = "{{ config('app.domisili') }}";
-            const tanggalSekarang = "{{ \Carbon\Carbon::now()->isoFormat('dddd, D MMMM YYYY') }}";
+            const domisili = @json(config('app.domisili'));
+            const tanggalSekarang = "{{ \Carbon\Carbon::now()->locale('id')->isoFormat('dddd, D MMMM YYYY') }}";
             const APP_VA_PREFIX = @json((string) (config('app.nova') ?: '751095'));
             const showVA = (nis) => typeof formatNoVA === 'function'
                 ? formatNoVA(nis, APP_VA_PREFIX)
@@ -920,9 +920,7 @@
 
                     const orientation = 'portrait';
                     const pageMargins = [20, 20, 20, 20];
-                    const tanggalSekarang = new Date().toLocaleDateString('id-ID', {
-                        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
-                    });
+                    const tanggalSekarang = formatTanggalIndonesia(new Date());
                     const availableWidth = getContentWidth('A4', orientation, pageMargins);
 
                     const headerTable = {
@@ -1219,15 +1217,7 @@
 
                 rows.forEach((item, index) => {
                     const tanggalBayar = item.PAIDDT
-                        ? new Date(item.PAIDDT).toLocaleString('id-ID', {
-                            weekday: 'long',
-                            day: 'numeric',
-                            month: 'long',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            second: '2-digit'
-                        })
+                        ? formatTanggalIndonesia(item.PAIDDT, { withTime: true })
                         : '-';
 
                     tableBody.push([
@@ -1358,12 +1348,7 @@
                 data.forEach((item, index) => {
                     let tanggalBayar = item.PAIDDT ?? item.TRXDATE;
                     if (tanggalBayar && tanggalBayar !== '' && tanggalBayar !== '0000-00-00 00:00:00') {
-                        tanggalBayar = new Date(tanggalBayar).toLocaleDateString('id-ID', {
-                            weekday: 'long',
-                            day: 'numeric',
-                            month: 'long',
-                            year: 'numeric'
-                        });
+                        tanggalBayar = formatTanggalIndonesia(tanggalBayar);
                     }
 
                     const billAm = Number(item.BILLAM_TOTAL ?? item.BILLAM ?? 0);

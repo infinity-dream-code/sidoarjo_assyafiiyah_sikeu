@@ -636,8 +636,8 @@ class RekapPenerimaanController extends Controller
                         $dateRange = $this->parseDateRange((string) $val);
                         if ($dateRange) {
                             [$startDate, $endDate] = $dateRange;
-                            $tanggalMulai = $startDate->isoFormat('dddd, D MMMM YYYY');
-                            $tanggalSelesai = $endDate->isoFormat('dddd, D MMMM YYYY');
+                            $tanggalMulai = $startDate->locale('id')->isoFormat('dddd, D MMMM YYYY');
+                            $tanggalSelesai = $endDate->locale('id')->isoFormat('dddd, D MMMM YYYY');
                             ($colName) && $filters[] = [$colName, $startDate, $endDate, 'whereBetween'];
                         }
                     } elseif (in_array($key, ['periode_mulai', 'periode_akhir'])) {

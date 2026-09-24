@@ -783,11 +783,11 @@
             };
 
             const instansi = {
-                nama_instansi: "{{ config('app.nama_instansi') }}",
+                nama_instansi: @json(config('app.nama_instansi') ?? ''),
                 nama_sub_1: "{{ config('app.nama_sub_instansi_1') }}",
                 nama_sub_2: "{{ config('app.nama_sub_instansi_2') }}",
                 akreditasi: "{{ config('app.akreditasi') }}",
-                alamat: "{{ config('app.alamat') }}",
+                alamat: @json(config('app.alamat')),
                 kontak: {
                     telepon: "{{ config('app.telepon') }}",
                     email: "{{ config('app.email') }}",
@@ -797,8 +797,8 @@
             const headerLogo = "{{ base64_encode(file_get_contents(public_path(config('app.logo')))) }}";
             const tandaTangan = @json($tanda_tangan);
             const userName = "{{ Auth::user()->name }}";
-            const domisili = "{{ config('app.domisili') }}";
-            const tanggalSekarang = "{{ \Carbon\Carbon::now()->isoFormat('dddd, D MMMM YYYY') }}";
+            const domisili = @json(config('app.domisili'));
+            const tanggalSekarang = "{{ \Carbon\Carbon::now()->locale('id')->isoFormat('dddd, D MMMM YYYY') }}";
             const APP_VA_PREFIX = @json((string) (config('app.nova') ?: '751095'));
             const showVA = (nis) => typeof formatNoVA === 'function'
                 ? formatNoVA(nis, APP_VA_PREFIX)
@@ -894,9 +894,7 @@
 
                     const orientation = 'portrait';
                     const pageMargins = [20, 20, 20, 20];
-                    const tanggalSekarang = new Date().toLocaleDateString('id-ID', {
-                        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
-                    });
+                    const tanggalSekarang = formatTanggalIndonesia(new Date());
                     const availableWidth = getContentWidth('A4', orientation, pageMargins);
 
                     const headerTable = {
@@ -1016,12 +1014,7 @@
                 if (Number.isNaN(parsed.getTime())) {
                     return '-';
                 }
-                return parsed.toLocaleDateString('id-ID', {
-                    weekday: 'long',
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric'
-                });
+                return formatTanggalIndonesia(parsed);
             }
 
             async function generateKuitansi(data) {

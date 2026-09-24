@@ -821,7 +821,7 @@ function dtButtons(options, buttons) {
                                     month: 'long',
                                     year: 'numeric'
                                 };
-                                return basicDate.toLocaleDateString('id-ID', basicDateOptions);
+                                return (typeof formatTanggalIndonesia === 'function') ? formatTanggalIndonesia(basicDate) : basicDate.toLocaleDateString('id-ID', basicDateOptions);
                             case 'date':
                             case 'dateformat':
                                 if (!data) return '';
@@ -835,7 +835,7 @@ function dtButtons(options, buttons) {
                                     month: 'long',
                                     year: 'numeric'
                                 };
-                                return date.toLocaleDateString('id-ID', dateOptions);
+                                return (typeof formatTanggalIndonesia === 'function') ? formatTanggalIndonesia(date) : date.toLocaleDateString('id-ID', dateOptions);
                             case 'timestamp':
                             case 'datetime':
                                 if (!data || data === '0000-00-00 00:00:00' || data === '0000-00-00') {
@@ -860,7 +860,7 @@ function dtButtons(options, buttons) {
                                     hour: 'numeric',
                                     minute: 'numeric'
                                 };
-                                return tsDate.toLocaleDateString('id-ID', tsOptions);
+                                return (typeof formatTanggalIndonesia === 'function') ? formatTanggalIndonesia(tsDate, { withTime: true }) : tsDate.toLocaleDateString('id-ID', tsOptions);
                             case 'periode':
                             case 'yearmonth':
                                 if (!data || typeof data !== 'string' || data.length !== 6 || !/^\d{6}$/.test(data)) {
@@ -1328,7 +1328,7 @@ async function getDT(options) {
                                             month: 'long',
                                             year: 'numeric'
                                         };
-                                        return date.toLocaleDateString('id-ID', options);
+                                        return (typeof formatTanggalIndonesia === 'function') ? formatTanggalIndonesia(date, options && options.hour ? { withTime: true } : undefined) : date.toLocaleDateString('id-ID', options);
                                     }
                                     return data;
                                 };
@@ -1344,7 +1344,7 @@ async function getDT(options) {
                                             month: 'long',
                                             year: 'numeric'
                                         };
-                                        return date.toLocaleDateString('id-ID', options);
+                                        return (typeof formatTanggalIndonesia === 'function') ? formatTanggalIndonesia(date, options && options.hour ? { withTime: true } : undefined) : date.toLocaleDateString('id-ID', options);
                                     }
                                     return data;
                                 };
@@ -1383,7 +1383,7 @@ async function getDT(options) {
                                             hour: 'numeric',
                                             minute: 'numeric'
                                         };
-                                        return date.toLocaleDateString('id-ID', options);
+                                        return (typeof formatTanggalIndonesia === 'function') ? formatTanggalIndonesia(date, options && options.hour ? { withTime: true } : undefined) : date.toLocaleDateString('id-ID', options);
                                     }
                                     return data;
                                 };

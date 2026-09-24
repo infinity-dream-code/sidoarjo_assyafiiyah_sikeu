@@ -216,7 +216,7 @@
                                         <div class="timeline-header">
                                             <h6 class="mb-0">{{$item->BILLNM}}</h6>
                                             <small class="text-dark">
-                                                {{ \Carbon\Carbon::parse($item->PAIDDT)->isoFormat('dddd, D MMMM YYYY')}}
+                                                {{ \Carbon\Carbon::parse($item->PAIDDT)->locale('id')->isoFormat('dddd, D MMMM YYYY')}}
                                             </small>
                                         </div>
                                         <h6>@rupiah($item->BILLAM??0)</h6>

@@ -312,7 +312,7 @@
     <tr>
         <td colspan="5" style="color: #fff;">TESTING</td>
         <td style="color: #fff;">TESTING</td>
-        <td align="right">{{Carbon::now()->isoFormat('dddd, D MMMM YYYY')}}</td>
+        <td align="right">{{Carbon::now()->locale('id')->isoFormat('dddd, D MMMM YYYY')}}</td>
     </tr>
     <tr>
         <td colspan="5" style="color: #fff;">TESTING</td>

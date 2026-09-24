@@ -180,7 +180,7 @@
     <tr>
         <td colspan="5"></td>
         <td style="color: #fff;">-</td>
-        <td align="right">{{config('app.domisili')}}, {{Carbon::now()->isoFormat('dddd, D MMMM YYYY')}}</td>
+        <td align="right">{{config('app.domisili')}}, {{Carbon::now()->locale('id')->isoFormat('dddd, D MMMM YYYY')}}</td>
     </tr>
     <tr>
         <td colspan="5" style="color: #fff;">TESTING</td>

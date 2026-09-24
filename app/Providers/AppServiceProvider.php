@@ -20,6 +20,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        \Carbon\Carbon::setLocale(config('app.locale', 'id'));
+        try {
+            \Illuminate\Support\Facades\App::setLocale(config('app.locale', 'id'));
+        } catch (\Throwable) {
+            //
+        }
+
         Blade::directive('rupiah', function ($expression) {
             return "<?php echo 'Rp. ' . number_format($expression,0,',','.'); ?>";
         });

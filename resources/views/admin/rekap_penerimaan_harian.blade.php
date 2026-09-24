@@ -254,11 +254,11 @@
         };
 
         const instansi = {
-            nama_instansi: "{{ config('app.nama_instansi') ?? ''}}",
+            nama_instansi: @json(config('app.nama_instansi') ?? ''),
             nama_sub_1: "{{ config('app.nama_sub_instansi_1') ?? ''}}",
             nama_sub_2: "{{ config('app.nama_sub_instansi_2') ?? ''}}",
             akreditasi: "{{ config('app.akreditasi') ?? ''}}",
-            alamat: "{{ config('app.alamat') ?? ''}}",
+            alamat: @json(config('app.alamat') ?? ''),
             kontak: {
                 telepon: "{{ config('app.telepon') ?? ''}}",
                 email: "{{ config('app.email') ?? ''}}",
@@ -267,8 +267,8 @@
         };
         const headerLogo = "{{ base64_encode(file_get_contents(public_path(config('app.logo')))) }}";
         const userName = "KASIR";
-        const domisili = "{{ config('app.domisili') }}";
-        const tanggalSekarang = "{{ \Carbon\Carbon::now()->isoFormat('dddd, D MMMM YYYY') }}";
+        const domisili = @json(config('app.domisili'));
+        const tanggalSekarang = "{{ \Carbon\Carbon::now()->locale('id')->isoFormat('dddd, D MMMM YYYY') }}";
 
         const dariTanggal = $('#filter_dari_tanggal');
 
@@ -446,9 +446,7 @@
 
             function generatePdfRekapTagihanPdfMake(data) {
                 const logo = headerLogo ? {image: 'data:image/jpeg;base64,' + headerLogo, width: 60} : '';
-                const tanggalSekarang = new Date().toLocaleDateString('id-ID', {
-                    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
-                });
+                const tanggalSekarang = formatTanggalIndonesia(new Date());
 
                 const orientation = 'portrait';
                 const pageMargins = [20, 20, 20, 20];

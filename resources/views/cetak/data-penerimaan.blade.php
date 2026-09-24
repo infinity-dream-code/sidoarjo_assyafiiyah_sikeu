@@ -267,7 +267,7 @@
                             $nama = '';
                         }
 
-                        $date = \Carbon\Carbon::parse($item['PAIDDT'])->isoFormat('dddd, D MMMM YYYY');
+                        $date = \Carbon\Carbon::parse($item['PAIDDT'])->locale('id')->isoFormat('dddd, D MMMM YYYY');
                         $time = \Carbon\Carbon::parse($item['PAIDDT'])->isoFormat('HH:mm');
                     @endphp
                     <td class="{{$nisClass}} border-right-0">{{$nis}} </td>
@@ -295,7 +295,7 @@
     <tr>
         <td colspan="5" style="color: #fff;">TESTING</td>
         <td style="color: #fff;">TESTING</td>
-        <td align="right">{{Carbon::now()->isoFormat('dddd, D MMMM YYYY')}}</td>
+        <td align="right">{{Carbon::now()->locale('id')->isoFormat('dddd, D MMMM YYYY')}}</td>
     </tr>
     <tr>
         <td colspan="5" style="color: #fff;">TESTING</td>
