@@ -215,7 +215,11 @@ class DataTagihanController extends Controller
             ->where('BILLAC', '!=', '')
             ->distinct()
             ->orderBy('BILLAC', 'desc')
-            ->pluck('BILLAC');
+            ->pluck('BILLAC')
+            ->map(fn ($item) => [
+                'value' => $item,
+                'label' => self::formatBillacPeriodeLabel($item),
+            ]);
         $data['sekolah'] = mst_sekolah::when($this->sekolah, function ($query) {
             $query->where(function ($q) {
                 $q->where("CODE01", $this->sekolah)
@@ -789,7 +793,8 @@ class DataTagihanController extends Controller
                     'BILLAM' => $get('PAYMENTLEFT'),
                     'BILLPAID' => $get('BILLPAID'),
                     'PAYMENTLEFT' => $get('PAYMENTLEFT'),
-                    'BILLAC' => $get('BILLAC'),
+                    'BILLAC' => $this->formatBillacPeriode($get('BILLAC')),
+                    'BILLAC_RAW' => $get('BILLAC'),
                     'BTA' => $get('BTA'),
                     'PAIDST' => $get('PAIDST'),
                     'INSTALLMENT' => (int) ($get('INSTALLMENT') ?? 0),
@@ -1188,5 +1193,34 @@ class DataTagihanController extends Controller
                 }
             }
         };
+    }
+
+    /** 202601 → Januari 2026 */
+    public static function formatBillacPeriodeLabel(mixed $billac): string
+    {
+        $raw = trim((string) $billac);
+        if ($raw === '' || !preg_match('/^(\d{4})(\d{2})$/', $raw, $m)) {
+            return $raw !== '' ? $raw : '-';
+        }
+
+        $months = [
+            1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+            5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+            9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember',
+        ];
+
+        $month = (int) $m[2];
+        $year = $m[1];
+
+        if (!isset($months[$month])) {
+            return $raw;
+        }
+
+        return $months[$month].' '.$year;
+    }
+
+    private function formatBillacPeriode(mixed $billac): string
+    {
+        return self::formatBillacPeriodeLabel($billac);
     }
 }
