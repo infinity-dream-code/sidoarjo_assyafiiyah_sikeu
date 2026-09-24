@@ -750,8 +750,11 @@ class SaldoVirtualAccountController extends Controller
             'sccttran.METODE',
         ];
 
-        $query = sccttran::query()
-            ->leftJoin('scctcust', 'scctcust.CUSTID', '=', 'sccttran.CUSTID');
+        // Hanya transaksi transfer/VA — Manual Cash (1140000) tidak ditampilkan.
+        $query = $this->excludeManualCashScope(
+            sccttran::query()->leftJoin('scctcust', 'scctcust.CUSTID', '=', 'sccttran.CUSTID'),
+            'sccttran.FIDBANK'
+        );
 
         foreach ($filters as $filter) {
             if (count($filter) === 3 && ($filter[1] ?? null) === 'in' && is_array($filter[2] ?? null)) {
@@ -770,7 +773,7 @@ class SaldoVirtualAccountController extends Controller
             });
         }
 
-        $totalRecords = sccttran::query()->count();
+        $totalRecords = $this->excludeManualCashScope(sccttran::query())->count();
         $totalRecordswithFilter = (clone $query)->count();
 
         $records = (clone $query)
