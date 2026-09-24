@@ -401,7 +401,7 @@
 
                     row.eachCell({includeEmpty: true}, cell => {
                         if (cell.value instanceof Date) {
-                            cell.numFmt = "dddd, dd mmmm yyyy";
+                            if (typeof formatTanggalIndonesia === 'function') { cell.value = formatTanggalIndonesia(cell.value); } else { cell.numFmt = "dd-mm-yyyy"; }
                         }
 
                         if (typeof cell.value === "number") {

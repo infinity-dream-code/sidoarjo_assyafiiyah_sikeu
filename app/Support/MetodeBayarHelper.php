@@ -21,12 +21,33 @@ class MetodeBayarHelper
     }
 
     /**
+     * Label metode/keterangan dari sccttran.METODE → Indonesia.
+     */
+    public static function translateMetodeLabel(?string $metode): string
+    {
+        $raw = trim((string) $metode);
+        if ($raw === '') {
+            return '-';
+        }
+
+        return match (strtoupper($raw)) {
+            'CASH' => 'Tunai',
+            'FROM TELLER' => 'Dari Teller',
+            'TELLER' => 'Teller',
+            'TOP UP' => 'Top Up',
+            'MOBILE' => 'Mobile',
+            'MNL' => 'Manual',
+            default => $raw,
+        };
+    }
+
+    /**
      * Aturan tampilan metode (sumber utama: scctbill):
      * - scctbill.NOREFF = Mobile → ANDROID (FIDBANK apa saja)
      * - selain itu pakai scctbill.FIDBANK
-     *   1140000 + MNL → Manual Cash
+     *   1140000 + MNL → Manual Tunai
      *   1140001 + MNL → Manual BMI
-     *   1140002 + MNL → Manual SALDO
+     *   1140002 + MNL → Manual Saldo
      *   1140003 → Transfer Bank Lain
      */
     public static function resolveDisplayFidBank(?string $fidBank, ?string $billNoreff = null): string

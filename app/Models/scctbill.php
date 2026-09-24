@@ -44,9 +44,9 @@ class scctbill extends Model
     ];
 
     public array $metodeBayar = [
-        "1140000" => "Manual Cash",
+        "1140000" => "Manual Tunai",
         "1140001" => "Manual BMI",
-        "1140002" => "Manual SALDO",
+        "1140002" => "Manual Saldo",
         "1140003" => "Transfer Bank Lain",
         "1140004" => "INFAQ",
         "1140005" => "Transfer Bank BRI",

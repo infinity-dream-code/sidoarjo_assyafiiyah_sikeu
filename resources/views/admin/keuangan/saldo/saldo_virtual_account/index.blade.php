@@ -154,7 +154,7 @@
 
 @section('script')
     <script src="{{asset('main/libs/datatables-bs5/datatables-bootstrap5.js')}}"></script>
-    <script src="{{asset('js/datatableCustom/Datatable-0-4.js')}}"></script>
+    <script src="{{asset('js/datatableCustom/Datatable-0-4.js?v=20260924-id3')}}"></script>
     <script src="{{asset('main/libs/select2/select2.js')}}"></script>
     <script src="{{asset('main/libs/select2/id.min.js')}}"></script>
 

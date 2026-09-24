@@ -128,7 +128,7 @@
 
 @section('script')
     <script src="{{asset('main/libs/datatables-bs5/datatables-bootstrap5.js')}}"></script>
-    <script src="{{asset('js/datatableCustom/Datatable-0-4.js')}}?v=20260605-export-fix"></script>
+    <script src="{{asset('js/datatableCustom/Datatable-0-4.js?v=20260924-id3')}}?v=20260605-export-fix"></script>
 
     <script type="text/javascript">
         const dtOptions = {

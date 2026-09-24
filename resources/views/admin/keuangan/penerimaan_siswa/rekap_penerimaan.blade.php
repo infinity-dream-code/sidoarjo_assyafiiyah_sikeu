@@ -284,7 +284,7 @@
 @section('script')
     <script src="{{asset('main/libs/select2/select2.js')}}"></script>
     <script src="{{asset('main/libs/datatables-bs5/datatables-bootstrap5.js')}}"></script>
-    <script src="{{asset('js/datatableCustom/Datatable-0-4.js')}}?v=20260723-excel-total"></script>
+    <script src="{{asset('js/datatableCustom/Datatable-0-4.js?v=20260924-id3')}}?v=20260723-excel-total"></script>
     <script src="{{asset('main/libs/moment/moment.js')}}"></script>
     <script src="{{asset('main/libs/bootstrap-daterangepicker/bootstrap-daterangepicker.js')}}"></script>
 
@@ -832,7 +832,7 @@
                 [4, 5].forEach(rowNumber => {
                     const cell = ws.getRow(rowNumber).getCell(2);
                     if (cell.value instanceof Date) {
-                        cell.numFmt = "dddd, dd mmmm yyyy";
+                        if (typeof formatTanggalIndonesia === 'function') { cell.value = formatTanggalIndonesia(cell.value); } else { cell.numFmt = "dd-mm-yyyy"; }
                     }
                     ws.getColumn(2).width = Math.max(ws.getColumn(2).width || 10, 30);
                 });

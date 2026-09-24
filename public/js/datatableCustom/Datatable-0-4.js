@@ -185,32 +185,9 @@ function addExcelDateStyle(xlsx, formatCode, numFmtId) {
 }
 
 function applyExcelDateStyles(xlsx, sheet, dataColumns) {
-    const rows = $('row', sheet);
-    const styleCache = {};
-
-    let excelIdx = 0;
-    dataColumns.forEach(col => {
-        if (col.exportable !== true) return;
-        const ct = col.columnType?.toLowerCase();
-        const fmt = ct ? EXCEL_DATE_FORMATS[ct] : null;
-
-        if (fmt) {
-            if (!styleCache[fmt.id]) {
-                styleCache[fmt.id] = addExcelDateStyle(xlsx, fmt.code, fmt.id);
-            }
-            const styleIdx = String(styleCache[fmt.id]);
-
-            rows.each(function (rowIdx) {
-                if (rowIdx === 0) return;
-                const cell = $('c', this).eq(excelIdx);
-                if (cell.length) {
-                    cell.attr('s', styleIdx);
-                    cell.removeAttr('t');
-                }
-            });
-        }
-        excelIdx++;
-    });
+    // Tanggal diekspor sebagai teks Indonesia via formatTanggalIndonesia.
+    // Style Excel "dddd" mengikuti locale OS (sering Inggris) jadi tidak dipakai.
+    return;
 }
 
 function getExcelColumnName(index) {
@@ -812,55 +789,45 @@ function dtButtons(options, buttons) {
                                 return row + 1;
                             case 'basicdate':
                                 if (!data) return '';
-                                if (config.extend === 'excel') {
-                                    return dateToExcelSerial(new Date(data));
+                                {
+                                    const basicDate = new Date(data);
+                                    if (Number.isNaN(basicDate.getTime())) return '';
+                                    // Excel: teks Indonesia (hindari dddd/mmmm locale OS Inggris)
+                                    if (typeof formatTanggalIndonesia === 'function') {
+                                        const full = formatTanggalIndonesia(basicDate);
+                                        return full.replace(/^[^,]+,\s*/, '');
+                                    }
+                                    return basicDate.toLocaleDateString('id-ID', {
+                                        day: 'numeric', month: 'long', year: 'numeric'
+                                    });
                                 }
-                                let basicDate = new Date(data);
-                                let basicDateOptions = {
-                                    day: 'numeric',
-                                    month: 'long',
-                                    year: 'numeric'
-                                };
-                                return (typeof formatTanggalIndonesia === 'function') ? formatTanggalIndonesia(basicDate) : basicDate.toLocaleDateString('id-ID', basicDateOptions);
                             case 'date':
                             case 'dateformat':
                                 if (!data) return '';
-                                if (config.extend === 'excel') {
-                                    return dateToExcelSerial(new Date(data));
+                                {
+                                    const date = new Date(data);
+                                    if (Number.isNaN(date.getTime())) return '';
+                                    return (typeof formatTanggalIndonesia === 'function')
+                                        ? formatTanggalIndonesia(date)
+                                        : date.toLocaleDateString('id-ID', {
+                                            weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+                                        });
                                 }
-                                let date = new Date(data);
-                                let dateOptions = {
-                                    weekday: 'long',
-                                    day: 'numeric',
-                                    month: 'long',
-                                    year: 'numeric'
-                                };
-                                return (typeof formatTanggalIndonesia === 'function') ? formatTanggalIndonesia(date) : date.toLocaleDateString('id-ID', dateOptions);
                             case 'timestamp':
                             case 'datetime':
                                 if (!data || data === '0000-00-00 00:00:00' || data === '0000-00-00') {
                                     return '';
                                 }
-                                if (config.extend === 'excel') {
-                                    const excelDate = new Date(data);
-                                    if (Number.isNaN(excelDate.getTime())) {
-                                        return '';
-                                    }
-                                    return dateToExcelSerial(excelDate);
+                                {
+                                    const tsDate = new Date(data);
+                                    if (Number.isNaN(tsDate.getTime())) return '';
+                                    return (typeof formatTanggalIndonesia === 'function')
+                                        ? formatTanggalIndonesia(tsDate, { withTime: true })
+                                        : tsDate.toLocaleDateString('id-ID', {
+                                            weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+                                            hour: 'numeric', minute: 'numeric'
+                                        });
                                 }
-                                const tsDate = new Date(data);
-                                if (Number.isNaN(tsDate.getTime())) {
-                                    return '';
-                                }
-                                const tsOptions = {
-                                    weekday: 'long',
-                                    day: 'numeric',
-                                    month: 'long',
-                                    year: 'numeric',
-                                    hour: 'numeric',
-                                    minute: 'numeric'
-                                };
-                                return (typeof formatTanggalIndonesia === 'function') ? formatTanggalIndonesia(tsDate, { withTime: true }) : tsDate.toLocaleDateString('id-ID', tsOptions);
                             case 'periode':
                             case 'yearmonth':
                                 if (!data || typeof data !== 'string' || data.length !== 6 || !/^\d{6}$/.test(data)) {
@@ -1609,9 +1576,9 @@ async function getDT(options) {
                                         return 'ANDROID';
                                     }
                                     const descriptions = {
-                                        '1140000': 'Manual Cash',
+                                        '1140000': 'Manual Tunai',
                                         '1140001': 'Manual BMI',
-                                        '1140002': 'Manual SALDO',
+                                        '1140002': 'Manual Saldo',
                                         '1140003': 'Transfer Bank Lain',
                                         '1140004': 'Transfer Bank BNI',
                                         '1140005': 'Transfer Bank BRI',

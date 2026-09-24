@@ -8,6 +8,7 @@ use App\Models\mst_sekolah;
 use App\Models\mst_thn_aka;
 use App\Models\scctcust;
 use App\Models\sccttran;
+use App\Support\MetodeBayarHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -272,6 +273,7 @@ class SccttranController extends Controller
                 }
                 $item->NOVA = $NOVA;
                 $item->NOMINAL = (int) ($item->KREDIT ?? 0);
+                $item->METODE = MetodeBayarHelper::translateMetodeLabel($item->METODE ?? null);
                 unset($item->DEBET, $item->KREDIT);
 
                 return $item;

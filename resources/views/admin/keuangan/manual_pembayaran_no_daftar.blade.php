@@ -95,7 +95,7 @@
                             <label class="form-label" for="bank">Bank</label>
                             <select type="text" id="bank" name="bank" class="form-select"
                                     data-control="select2" data-placeholder="Bank">
-                                <option value="1140000">Manual Cash</option>
+                                <option value="1140000">Manual Tunai</option>
                                 <option value="1140001">Manual BMI</option>
                                 <option value="1140002">Manual Saldo</option>
                                 <option value="1140003">Transfer Bank Lain</option>
@@ -864,9 +864,9 @@
 
             function formatMetodePembayaran(data) {
                 const descriptions = {
-                    '1140000': 'Manual Cash',
+                    '1140000': 'Manual Tunai',
                     '1140001': 'Manual BMI',
-                    '1140002': 'Manual SALDO',
+                    '1140002': 'Manual Saldo',
                     '1140003': 'Transfer Bank Lain',
                     '1140004': 'INFAQ',
                     '1140005': 'Transfer Bank BRI',

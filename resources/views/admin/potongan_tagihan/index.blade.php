@@ -680,9 +680,9 @@
 
             function formatMetodePembayaran(data) {
                 const descriptions = {
-                    '1140000': 'Manual Cash',
+                    '1140000': 'Manual Tunai',
                     '1140001': 'Manual BMI',
-                    '1140002': 'Manual SALDO',
+                    '1140002': 'Manual Saldo',
                     '1140003': 'Transfer Bank Lain',
                     '1140004': 'Transfer Bank BNI',
                     '1140005': 'Transfer Bank BRI',

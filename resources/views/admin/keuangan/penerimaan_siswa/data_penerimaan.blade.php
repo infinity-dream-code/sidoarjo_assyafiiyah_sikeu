@@ -395,7 +395,7 @@
 
     {{--    <script src="{{asset('main/libs/select2/select2.full.min.js')}}"></script>--}}
     <script src="{{asset('main/libs/datatables-bs5/datatables-bootstrap5.js')}}"></script>
-    <script src="{{asset('js/datatableCustom/Datatable-0-4.js')}}?v=20260723-android-bill-noreff"></script>
+    <script src="{{asset('js/datatableCustom/Datatable-0-4.js?v=20260924-id3')}}?v=20260723-android-bill-noreff"></script>
     <script src="{{asset('main/libs/moment/moment.js')}}"></script>
     <script src="{{asset('main/libs/bootstrap-datepicker/bootstrap-datepicker.js')}}"></script>
 
@@ -1123,9 +1123,9 @@
                     return 'ANDROID';
                 }
                 const descriptions = {
-                    '1140000': 'Manual Cash',
+                    '1140000': 'Manual Tunai',
                     '1140001': 'Manual BMI',
-                    '1140002': 'Manual SALDO',
+                    '1140002': 'Manual Saldo',
                     '1140003': 'Transfer Bank Lain',
                     '1140004': 'INFAQ',
                     '1140005': 'Transfer Bank BRI',

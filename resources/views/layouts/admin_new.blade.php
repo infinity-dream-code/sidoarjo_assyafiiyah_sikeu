@@ -407,7 +407,7 @@
 {{--            integrity="sha256-3iXHrfSd4xzI1YyrooF0jG4OVwGiSAoU1+WdYwEwYZk=" crossorigin="anonymous" defer></script>--}}
     <script src="{{ asset('js/formatTanggalIndonesia.js') }}?v=20260924-id2"></script>
     <script src="{{asset('main/libs/datatables-bs5/datatables-bootstrap5.js')}}"></script>
-    <script src="{{asset('js/datatableCustom/Datatable-0-4.js')}}?v=20260924-id2" defer></script>
+    <script src="{{asset('js/datatableCustom/Datatable-0-4.js?v=20260924-id3')}}?v=20260924-id2" defer></script>
 
 {{--    @hasSection('datatable-responsive')--}}
 {{--        <script src="https://cdn.jsdelivr.net/npm/datatables.net-responsive@2.5.1/js/dataTables.responsive.min.js"--}}

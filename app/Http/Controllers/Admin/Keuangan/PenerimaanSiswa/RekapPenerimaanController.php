@@ -119,6 +119,11 @@ class RekapPenerimaanController extends Controller
         return $metodeBayarMap[$displayFid] ?? ($displayFid !== '' ? $displayFid : '-');
     }
 
+    private function translateRemark(?string $metode): string
+    {
+        return MetodeBayarHelper::translateMetodeLabel($metode);
+    }
+
     private function resolvePeriode(object $item): ?string
     {
         $billac = trim((string) ($item->BILLAC ?? ''));
@@ -158,7 +163,7 @@ class RekapPenerimaanController extends Controller
         $item->BILLAM = $this->resolveNominalAmount($item);
         $item->BILLNM = $item->BILLNM ?? $item->BILLTARGET ?? (strtoupper(trim((string) ($item->METODE ?? ''))) === 'TOP UP' ? 'TOP UP' : '-');
         $item->METODE_BAYAR = $this->resolveMetodeLabel($item, $metodeBayarMap);
-        $item->REMARK = trim((string) ($item->METODE ?? '')) ?: '-';
+        $item->REMARK = $this->translateRemark($item->METODE ?? null);
         $item->NOREFF = trim((string) ($item->NOREFF ?? '')) ?: '-';
         $item->kelas_label = trim(($item->DESC02 ?? '') . ' ' . ($item->DESC03 ?? ''));
         $item->NOVA = ($item->NOCUST && $item->NOCUST != '-') ? scctcust::showVA($item->NOCUST) : '-';
@@ -205,7 +210,7 @@ class RekapPenerimaanController extends Controller
             ['data' => 'BILLAM', 'name' => 'Nominal', 'searchable' => true, 'orderable' => true, 'columnType' => 'currency', 'className' => 'text-end', 'exportable' => true],
             ['data' => 'BILLNM', 'name' => 'Nama Tagihan', 'searchable' => true, 'orderable' => true, 'exportable' => true],
             ['data' => 'METODE_BAYAR', 'name' => 'Metode Bayar', 'searchable' => true, 'orderable' => true, 'exportable' => true],
-            ['data' => 'REMARK', 'name' => 'Remark', 'searchable' => true, 'orderable' => true, 'exportable' => true],
+            ['data' => 'REMARK', 'name' => 'Keterangan', 'searchable' => true, 'orderable' => true, 'exportable' => true],
             ['data' => 'NOREFF', 'name' => 'No Ref', 'searchable' => true, 'orderable' => true, 'exportable' => true],
             ['data' => 'NOCUST', 'name' => 'NIS', 'searchable' => true, 'orderable' => true, 'exportable' => true],
         ];
@@ -230,7 +235,7 @@ class RekapPenerimaanController extends Controller
             $query->whereIn('CODE01', $schoolCodes);
         })->get();
         $data['bank'] = [
-            '1140000' => 'Manual Cash',
+            '1140000' => 'Manual Tunai',
             '1140002' => 'Manual SALDO',
             '1140001' => 'Manual BMI',
             '1140003' => 'Transfer Bank Lain',

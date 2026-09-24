@@ -739,7 +739,7 @@
 
             [6, 7].forEach(rowNumber => {
                 const cell = ws.getRow(rowNumber).getCell(2);
-                if (cell.value instanceof Date) cell.numFmt = "dddd, dd mmmm yyyy";
+                if (cell.value instanceof Date) if (typeof formatTanggalIndonesia === 'function') { cell.value = formatTanggalIndonesia(cell.value); } else { cell.numFmt = "dd-mm-yyyy"; }
             });
             [1,2,3,4,5,6,7].forEach(rowNumber => {
                 ws.getRow(rowNumber).eachCell({includeEmpty: true}, cell => cell.font = {bold: true});
