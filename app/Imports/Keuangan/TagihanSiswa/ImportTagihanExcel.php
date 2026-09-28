@@ -80,7 +80,7 @@ class ImportTagihanExcel implements WithMultipleSheets, ToCollection, WithHeadin
                 $siswa = $siswa->first();
                 if (!$siswa) {
                     $rowData['status'] = 0;
-                    $statusKet[] = "NIS {$nis} tidak ditemukan di data siswa (NOCUST). Nodaf/NUM2ND tidak bisa dipakai untuk tagihan.";
+                    $statusKet[] = "NIS {$nis} tidak ditemukan";
                 } elseif (trim((string) ($rowData['nama'] ?? '')) === '') {
                     $rowData['nama'] = (string) ($siswa->NMCUST ?? '');
                 }

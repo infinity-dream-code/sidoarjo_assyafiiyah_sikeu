@@ -167,7 +167,7 @@ class UploadTagihanExcelController extends Controller
                 $formattedMissingColumns = implode(', ', array_map([$this, 'displayColumn'], $missingColumns));
                 throw new \Exception(
                     "Kolom {$formattedMissingColumns} tidak ditemukan.<br><hr>".
-                    'Kolom wajib: <b>NIS dan Nominal</b>. Tagihan hanya memakai NIS (NOCUST), bukan nodaf/NUM2ND.'
+                    'Kolom wajib: <b>NIS dan Nominal</b>. Tagihan hanya memakai NIS, bukan nodaf.'
                 );
             }
 
