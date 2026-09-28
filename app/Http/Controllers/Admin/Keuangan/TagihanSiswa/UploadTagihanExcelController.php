@@ -153,9 +153,9 @@ class UploadTagihanExcelController extends Controller
 
             $requiredColumns = ImportTagihanExcel::REQUIRED_COLUMNS;
             $missingColumns = [];
-            $hasNik = in_array('nik', $headings, true) || in_array('nis', $headings, true) || in_array('nocust', $headings, true);
-            if (!$hasNik) {
-                $missingColumns[] = 'NIS / NIK';
+            $hasNis = in_array('nis', $headings, true) || in_array('nocust', $headings, true);
+            if (!$hasNis) {
+                $missingColumns[] = 'NIS';
             }
             foreach ($requiredColumns as $column) {
                 if (!in_array($column, $headings, true)) {
@@ -167,7 +167,7 @@ class UploadTagihanExcelController extends Controller
                 $formattedMissingColumns = implode(', ', array_map([$this, 'displayColumn'], $missingColumns));
                 throw new \Exception(
                     "Kolom {$formattedMissingColumns} tidak ditemukan.<br><hr>".
-                    'Kolom wajib: <b>NIS (atau NIK) dan Nominal</b>. Kolom lain opsional.'
+                    'Kolom wajib: <b>NIS dan Nominal</b>. Tagihan hanya memakai NIS (NOCUST), bukan nodaf/NUM2ND.'
                 );
             }
 
@@ -304,7 +304,7 @@ class UploadTagihanExcelController extends Controller
     {
         return ImportTagihanExcel::COLUMN_LABELS[$column]
             ?? match ($column) {
-                'nis / nik', 'nis/nik' => 'NIS / NIK',
+                'nocust' => 'NIS',
                 default => ucwords(str_replace('_', ' ', $column)),
             };
     }

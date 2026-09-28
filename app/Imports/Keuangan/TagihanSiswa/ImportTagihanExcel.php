@@ -15,14 +15,14 @@ class ImportTagihanExcel implements WithMultipleSheets, ToCollection, WithHeadin
 {
     public const CACHE_KEY = 'import_tagihan_excel';
 
-    /** Header wajib selain NIS/NIK (dicek terpisah di controller). */
+    /** Header wajib selain NIS (dicek terpisah di controller). */
     public const REQUIRED_COLUMNS = [
         'nominal',
     ];
 
     public const COLUMN_LABELS = [
-        'nik' => 'NIK',
         'nis' => 'NIS',
+        'nocust' => 'NIS',
         'nama' => 'Nama',
         'unit' => 'Unit',
         'kelas' => 'Kelas',
@@ -66,16 +66,21 @@ class ImportTagihanExcel implements WithMultipleSheets, ToCollection, WithHeadin
             $rowData['status'] = 1;
             $statusKet = [];
 
-            if ($nis === '') {
+            if ($nis === '' || $nis === '-') {
                 $rowData['status'] = 0;
-                $statusKet[] = 'NIS/NIK tidak boleh kosong';
+                $rowData['nis'] = '';
+                $statusKet[] = 'NIS tidak boleh kosong';
             } else {
-                $siswa = scctcust::where('NOCUST', $nis);
+                // Tagihan hanya boleh lewat NIS (NOCUST), bukan nodaf/NUM2ND/NIK.
+                $siswa = scctcust::query()
+                    ->where('NOCUST', $nis)
+                    ->where('NOCUST', '!=', '')
+                    ->where('NOCUST', '!=', '-');
                 SchoolScope::apply($siswa, 'scctcust', $this->sekolah);
                 $siswa = $siswa->first();
                 if (!$siswa) {
                     $rowData['status'] = 0;
-                    $statusKet[] = "NIS/NIK {$nis} tidak ditemukan";
+                    $statusKet[] = "NIS {$nis} tidak ditemukan di data siswa (NOCUST). Nodaf/NUM2ND tidak bisa dipakai untuk tagihan.";
                 } elseif (trim((string) ($rowData['nama'] ?? '')) === '') {
                     $rowData['nama'] = (string) ($siswa->NMCUST ?? '');
                 }
@@ -126,15 +131,18 @@ class ImportTagihanExcel implements WithMultipleSheets, ToCollection, WithHeadin
             return null;
         };
 
-        $nisRaw = $pick(['nik', 'nis', 'nocust']);
+        // Hanya NIS / NOCUST. Jangan ambil nik, nodaf, num2nd, nodaftar.
+        $nisRaw = $pick(['nis', 'nocust']);
         $kelasRaw = $pick(['kelas', 'kelassiswa']);
         $nominalRaw = $pick(['nominal', 'jumlah', 'tagihan']);
 
         $nis = $this->excelId($nisRaw);
+        if ($nis === '-') {
+            $nis = '';
+        }
 
         return [
             'nis' => $nis,
-            'nik' => $nis,
             'nocust' => $nis,
             'nama' => trim((string) ($pick(['nama', 'nmcust']) ?? '')),
             'unit' => trim((string) ($pick(['unit']) ?? '')),
