@@ -6,17 +6,16 @@ use App\Support\PersistentLogin;
 use Closure;
 use Illuminate\Auth\Middleware\Authenticate as Middleware;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class Authenticate extends Middleware
 {
     public function handle($request, Closure $next, ...$guards)
     {
-        if (!Auth::check()) {
-            $user = PersistentLogin::userFromRequest($request);
-            if ($user) {
-                PersistentLogin::bind($user);
-                PersistentLogin::queue($user);
+        try {
+            PersistentLogin::restoreFromRequest($request);
+        } catch (\Throwable $e) {
+            if (!PersistentLogin::isTransient($e)) {
+                throw $e;
             }
         }
 
@@ -28,6 +27,28 @@ class Authenticate extends Middleware
      */
     protected function redirectTo(Request $request): ?string
     {
-        return $request->expectsJson() ? null : route('login');
+        if (PersistentLogin::isAjaxRequest($request)) {
+            return null;
+        }
+
+        // Cookie masih ada → jangan langsung ke login; biarkan Handler/unauthenticated handle retry.
+        if (PersistentLogin::hasCookie($request)) {
+            return null;
+        }
+
+        return route('login');
+    }
+
+    protected function unauthenticated($request, array $guards)
+    {
+        if (PersistentLogin::hasCookie($request) || PersistentLogin::isAjaxRequest($request)) {
+            throw new \Illuminate\Auth\AuthenticationException(
+                'Unauthenticated.',
+                $guards,
+                null
+            );
+        }
+
+        parent::unauthenticated($request, $guards);
     }
 }

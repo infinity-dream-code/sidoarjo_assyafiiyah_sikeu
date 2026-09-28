@@ -43,10 +43,14 @@
             || text.includes('sesi anda')
             || text.includes('sesi sudah')
             || text.includes('sesi berakhir')
+            || text.includes('sesi habis')
             || text.includes('session expired')
             || text.includes('login kembali')
             || text.includes('silahkan login')
             || text.includes('silakan login')
+            || text.includes('token mismatch')
+            || text.includes('csrf token')
+            || text.includes('page expired')
             || text.includes('token anda sudah')
             || text.includes('token anda sudah tidak valid');
     }
@@ -65,6 +69,14 @@
             return original.apply(this, arguments);
         };
         window.errorAlert.__sessionKeepAliveWrapped = true;
+    }
+
+    function readJsonSafe(res) {
+        return res.clone().json().then(function (data) {
+            return data;
+        }).catch(function () {
+            return null;
+        });
     }
 
     function keepAlive() {
@@ -153,6 +165,26 @@
         return typeof url === 'string' && url.indexOf('/keep-alive') !== -1;
     }
 
+    function recoverAndRetry(input, init, canClone, attempt) {
+        attempt = attempt || 1;
+
+        return keepAlive().then(function (token) {
+            const nextInput = canClone ? input.clone() : input;
+            return nativeFetch(nextInput, retryInit(input, init, token || currentToken())).then(function (res) {
+                if (!shouldRetryStatus(res.status) || attempt >= 2) {
+                    return res;
+                }
+
+                return readJsonSafe(res).then(function (payload) {
+                    if (payload && payload.token) {
+                        applyToken(payload.token);
+                    }
+                    return recoverAndRetry(input, init, canClone, attempt + 1);
+                });
+            });
+        });
+    }
+
     window.fetch = function (input, init) {
         if (isKeepAliveUrl(input)) {
             return nativeFetch(input, init);
@@ -167,9 +199,11 @@
                 return res;
             }
 
-            return keepAlive().then(function (token) {
-                const secondInput = canClone ? input.clone() : input;
-                return nativeFetch(secondInput, retryInit(input, init, token || currentToken()));
+            return readJsonSafe(res).then(function (payload) {
+                if (payload && payload.token) {
+                    applyToken(payload.token);
+                }
+                return recoverAndRetry(input, init, canClone, 1);
             });
         });
     };
@@ -217,6 +251,14 @@
             }
 
             function fail(ctx, args) {
+                const jqXHR = args && args[0];
+                if (jqXHR && shouldRetryStatus(jqXHR.status)) {
+                    // Recovery diam-diam; jangan tampilkan alert sesi.
+                    keepAlive();
+                    dfd.rejectWith(ctx, args);
+                    return;
+                }
+
                 if (typeof userError === 'function') {
                     userError.apply(ctx, args);
                 }
@@ -232,17 +274,33 @@
                 }
 
                 const ctx = this;
+                let bodyToken = null;
+                try {
+                    const payload = jqXHR.responseJSON || JSON.parse(jqXHR.responseText || '{}');
+                    bodyToken = payload && payload.token ? payload.token : null;
+                    if (bodyToken) {
+                        applyToken(bodyToken);
+                    }
+                } catch (e) {
+                    //
+                }
+
                 keepAlive().then(function (token) {
                     const retrySettings = $.extend(true, {}, settings);
                     retrySettings._sessionKeepAliveRetried = true;
                     retrySettings.headers = $.extend({}, retrySettings.headers, {
-                        'X-CSRF-TOKEN': token || currentToken()
+                        'X-CSRF-TOKEN': token || bodyToken || currentToken()
                     });
+
+                    if (retrySettings.data instanceof FormData) {
+                        retrySettings.data.set('_token', token || bodyToken || currentToken());
+                    }
 
                     originalAjax(retrySettings).done(function () {
                         succeed(this, arguments);
                     }).fail(function () {
-                        fail(this, arguments);
+                        keepAlive();
+                        dfd.rejectWith(ctx, arguments);
                     });
                 }.bind(ctx));
             });
@@ -274,6 +332,7 @@
     // Re-wrap jika errorAlert di-define ulang oleh script halaman
     setTimeout(wrapErrorAlert, 0);
     setTimeout(wrapErrorAlert, 1000);
+    setTimeout(wrapErrorAlert, 3000);
 
     document.addEventListener('visibilitychange', function () {
         if (document.visibilityState === 'visible') {

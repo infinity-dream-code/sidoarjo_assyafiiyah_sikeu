@@ -17,20 +17,16 @@ class CheckUserRoles
      */
     public function handle(Request $request, Closure $next, ...$params)
     {
-        if (!Auth::check()) {
-            $user = PersistentLogin::userFromRequest($request);
-            if ($user) {
-                PersistentLogin::bind($user);
-                PersistentLogin::queue($user);
+        try {
+            PersistentLogin::restoreFromRequest($request);
+        } catch (\Throwable $e) {
+            if (!PersistentLogin::isTransient($e)) {
+                throw $e;
             }
         }
 
         if (!Auth::check()) {
-            if ($request->expectsJson() || $request->ajax() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
-                return response()->json(['retry' => true, 'token' => csrf_token()], 401);
-            }
-
-            return redirect()->route('login');
+            return PersistentLogin::unauthenticatedResponse($request);
         }
 
         $user = Auth::user();

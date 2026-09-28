@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Crypt;
+use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
 class PersistentLogin
@@ -20,6 +21,11 @@ class PersistentLogin
         return $minutes > 0 ? $minutes : 5256000;
     }
 
+    /**
+     * Restore auth dari cookie/session tanpa session->migrate().
+     * Auth::login() sengaja tidak dipakai di sini karena migrate mengganti
+     * session id + CSRF dan memicu 419/logout tiba-tiba.
+     */
     public static function bind(?CyberKey $user): void
     {
         if (!$user) {
@@ -27,8 +33,10 @@ class PersistentLogin
         }
 
         $guard = Auth::guard();
-        if (method_exists($guard, 'getName') && session()->isStarted()) {
-            session()->put($guard->getName(), $user->getAuthIdentifier());
+        $id = $user->getAuthIdentifier();
+
+        if (session()->isStarted() && method_exists($guard, 'getName')) {
+            session()->put($guard->getName(), $id);
         }
 
         $guard->setUser($user);
@@ -68,6 +76,56 @@ class PersistentLogin
         ));
     }
 
+    public static function restoreFromRequest(Request $request): ?CyberKey
+    {
+        $current = Auth::user();
+        if ($current instanceof CyberKey) {
+            self::queue($current);
+
+            return $current;
+        }
+
+        $user = self::userFromRequest($request);
+        if ($user) {
+            self::bind($user);
+            self::queue($user);
+        }
+
+        return $user;
+    }
+
+    public static function hasCookie(Request $request): bool
+    {
+        return self::rawCookieValue($request) !== null;
+    }
+
+    public static function unauthenticatedResponse(Request $request): Response
+    {
+        if (self::isAjaxRequest($request)) {
+            return response()->json([
+                'ok' => true,
+                'retry' => true,
+                'token' => csrf_token(),
+            ], 401);
+        }
+
+        // Cookie masih ada: kemungkinan transient — reload sekali, jangan tendang ke login.
+        if (self::hasCookie($request) && !$request->boolean('_auth_retry')) {
+            return redirect()->to($request->fullUrlWithQuery(['_auth_retry' => 1]));
+        }
+
+        return redirect()->guest(route('login'));
+    }
+
+    public static function isAjaxRequest(Request $request): bool
+    {
+        return $request->expectsJson()
+            || $request->ajax()
+            || $request->wantsJson()
+            || $request->header('X-Requested-With') === 'XMLHttpRequest'
+            || str_contains((string) $request->header('Accept'), 'application/json');
+    }
+
     public static function userFromRequest(Request $request): ?CyberKey
     {
         $raw = self::rawCookieValue($request);
@@ -93,6 +151,11 @@ class PersistentLogin
 
             return $user;
         } catch (Throwable $e) {
+            // Jangan anggap logout jika DB/session transient — biarkan caller retry.
+            if (self::isTransient($e)) {
+                throw $e;
+            }
+
             return null;
         }
     }
@@ -123,10 +186,13 @@ class PersistentLogin
             'sqlstate[40001]',
             'sqlstate[hy000] [2002]',
             'sqlstate[hy000] [2006]',
+            'sqlstate[hy000] [1045]',
+            'sqlstate[hy000] [2002]',
             'sqlstate[hy000]: general error: 1205',
             'sqlstate[hy000]: general error: 2006',
             'sqlstate[hy000]: general error: 2013',
             'please retry',
+            'access denied for user',
         ] as $needle) {
             if (str_contains($haystack, $needle)) {
                 return true;

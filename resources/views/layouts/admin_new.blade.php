@@ -507,6 +507,6 @@
 @endif
 <script src="{{ asset('js/formatTanggalIndonesia.js') }}?v=20260924-id2"></script>
 @yield('script')
-<script src="{{ asset('js/session-keepalive.js') }}?v=20260922-auth2"></script>
+<script src="{{ asset('js/session-keepalive.js') }}?v=20260928-auth4"></script>
 </body>
 </html>

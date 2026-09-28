@@ -12,10 +12,20 @@ class KeepAliveController extends Controller
 {
     public function __invoke(Request $request): JsonResponse
     {
-        $user = Auth::user() ?: PersistentLogin::userFromRequest($request);
+        try {
+            PersistentLogin::restoreFromRequest($request);
+        } catch (\Throwable $e) {
+            // Keep-alive tetap mengembalikan token baru meski restore transient gagal.
+        }
+
+        $user = Auth::user();
         if ($user) {
-            PersistentLogin::bind($user);
             PersistentLogin::queue($user);
+        }
+
+        if ($request->hasSession()) {
+            // Pastikan session tetap hidup tanpa mengganti CSRF tiap ping.
+            $request->session()->put('_keepalive_at', now()->timestamp);
         }
 
         return response()->json([
